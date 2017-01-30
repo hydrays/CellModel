@@ -1,29 +1,33 @@
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
+*.txt
+*.png
+*~
+*.pdf
+*.jpeg
+*.mp4
+*.grd
+*.gri
+case*
+.*
+path/**
+path*
+*CMakeFiles*
 *.a
-*.lib
-
-# Executables
-*.exe
-*.out
-*.app
+*.orig
+VNrelation/**
+BigCAT
+DataStream
+out
+Makefile
+out/**
+src/Makefile
+src/cmake_install.cmake
+VNrelation
+VNrelation_big/
+VNrelation_small/
+config.xml
+cmake_install.cmake
+commands
+*.o
+*.so
+*.csv
+*os*

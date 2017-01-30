@@ -12,7 +12,8 @@ public:
     double v1, v2;
     double u1, u2;
     double a, b;
- 
+    double area;
+
 public:
     //Ellipse(){};
     //~Ellipse(){};

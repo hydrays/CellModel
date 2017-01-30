@@ -11,7 +11,8 @@
 #include <unordered_set>
 #include <iomanip>
 #include "ellipse.h"
-#include "boundary_data.h"
+
+#define PI 3.1415926535
 
 struct PixelNode
 {
@@ -35,6 +36,7 @@ struct BoundaryData
     double res_x, res_y;
     int n, m;
     int nmin, nmax, mmin, mmax;    
+    double xmin, xmax, ymin, ymax;    
 
     int set_boundary_data(double L_value, double H_value)
 	{
@@ -46,8 +48,8 @@ struct BoundaryData
 	    int inner_m = 200;
 	    n = inner_n + 2*margin_n;
 	    m = inner_m + 2*margin_m;
-	    res_x = L/inner_m;
-	    res_y = H/inner_n;
+	    res_x = 2.0*L/inner_m;
+	    res_y = 2.0*H/inner_n;
 	    margin_L = margin_m*res_x;
 	    margin_H = margin_n*res_y;
 	    // nmin = margin_n;
@@ -58,6 +60,11 @@ struct BoundaryData
 	    nmax = n-1;
 	    mmin = 1;
 	    mmax = m-1;
+	    xmin = -L-margin_L;
+	    xmax = L + margin_L;
+	    ymin = -H-margin_H;
+	    ymax = H + margin_H;
+
 	    if ( nmin <= 0 || nmax >= n || mmin <= 0 || mmax >= m )
 	    {
 		std::cout << "error: not enough marginal region. \n";
@@ -94,7 +101,7 @@ struct VoronoiEdge
     double n1;
     double n2;
     double length;
-    int side_color[2];
+    std::vector<int> side_colors;
     VoronoiEdge(int edge_id, int id1, int id2)
 	: edge_id(edge_id), node_id1(id1), node_id2(id2)
 	{
@@ -148,6 +155,7 @@ public:
     std::vector<VoronoiEdge> voronoi_edge_list;
     std::unordered_set<VoronoiEdge, Hash> primary_edge_set;
     std::vector<Ellipse> ellipse_list;
+    std::vector<Ellipse> new_ellipse_list;
 
     int init()
 	{
@@ -159,6 +167,9 @@ public:
 
 	    apply_boundary_condition_ellipse();
 	    ellipse_to_voronoi();
+
+	    voronoi_to_ellipse();
+	    output_new_ellipse_list();
 	}
 
     int apply_boundary_condition_ellipse()
@@ -170,8 +181,8 @@ public:
 
 	    for ( int k=0; k<ellipse_list.size(); k++ )
 	    {
-		if ( (ellipse_list[k].c1 < 0.0) || (ellipse_list[k].c1 > L) 
-		    || (ellipse_list[k].c2 < 0.0) || (ellipse_list[k].c2 > H) )
+		if ( (ellipse_list[k].c1 < -L) || (ellipse_list[k].c1 > L) 
+		     || (ellipse_list[k].c2 < -H) || (ellipse_list[k].c2 > H) )
 		{
 		    std::cout << "remove ellipse outside the bounding box..." 
 			      << ellipse_list[k].ellipse_id << " "
@@ -185,37 +196,37 @@ public:
 	    {
 		// left
 		if ( (ellipse_list[k].c1 <= L) && (ellipse_list[k].c1 >= L - margin_L)
-		     && (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= 0) )
+		     && (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= -H) )
 		{
 		    Ellipse ellipse = ellipse_list[k];
-		    ellipse.c1 = ellipse.c1 - L;
+		    ellipse.c1 = ellipse.c1 - 2.0*L;
 		    ellipse.ellipse_id = ellipse.ellipse_id + MAX_NUM_ELLIPSE;
 		    ellipse_list.push_back(ellipse);		    
 		}
 		// right
-		if ( (ellipse_list[k].c1 <= margin_L) && (ellipse_list[k].c1 >= 0)
-		     && (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= 0) )
+		if ( (ellipse_list[k].c1 <= -L+margin_L) && (ellipse_list[k].c1 >= -L)
+		     && (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= -H) )
 		{
 		    Ellipse ellipse = ellipse_list[k];
-		    ellipse.c1 = ellipse.c1 + L;
+		    ellipse.c1 = ellipse.c1 + 2.0*L;
 		    ellipse.ellipse_id = ellipse.ellipse_id + 2*MAX_NUM_ELLIPSE;
 		    ellipse_list.push_back(ellipse);		    
 		}
 		// top
 		if ( //(ellipse_list[k].c1 <= L) && (ellipse_list[k].c1 >= 0) )
-		     (ellipse_list[k].c2 <= margin_H) && (ellipse_list[k].c2 >= 0) )
+		    (ellipse_list[k].c2 <= -H+margin_H) && (ellipse_list[k].c2 >= -H) )
 		{
 		    Ellipse ellipse = ellipse_list[k];
-		    ellipse.c2 = ellipse.c2 + H;
+		    ellipse.c2 = ellipse.c2 + 2.0*H;
 		    ellipse.ellipse_id = ellipse.ellipse_id + 3*MAX_NUM_ELLIPSE;
 		    ellipse_list.push_back(ellipse);		    
 		}
 		// down
 		if ( //(ellipse_list[k].c1 <= L) && (ellipse_list[k].c1 >= 0) )
-		     (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= H - margin_H) )
+		    (ellipse_list[k].c2 <= H) && (ellipse_list[k].c2 >= H - margin_H) )
 		{
 		    Ellipse ellipse = ellipse_list[k];
-		    ellipse.c2 = ellipse.c2 - H;
+		    ellipse.c2 = ellipse.c2 - 2.0*H;
 		    ellipse.ellipse_id = ellipse.ellipse_id + 4*MAX_NUM_ELLIPSE;
 		    ellipse_list.push_back(ellipse);		    
 		}
@@ -241,8 +252,14 @@ public:
 		double v2 = 0.0;
 		double u1 = 0.0;
 		double u2 = 0.5;
+		double a = sqrt(v1*v1 + v2*v2);
+		double b = sqrt(u1*u1 + u2*u2);
+		double area = PI*a*b;
 		std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
 		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
+		ellipse.a = a;
+		ellipse.b = b;
+		ellipse.area = area;
 		ellipse_list.push_back(ellipse);
 	    }
 
@@ -297,14 +314,15 @@ public:
 
 	    //find_nodes(partition_table, node_list, raw_node_list, node_color_set);
 
-	    make_voronoi_node_list(node_list, node_color_set, partition_table, distance_table);
-	    make_voronoi_cell_list(ellipse_list);
-	    make_voronoi_edge_list(); // must after "make_voronoi_cell_list"
+	    make_node_list(node_list, node_color_set, partition_table, distance_table);
+	    make_cell_list(ellipse_list);
+	    make_edge_list(); // must after "make_voronoi_cell_list"
+	    refine_cell_list();
 
 	    output_ellipse_list();
-	    output_voronoi_node_list();
-	    output_voronoi_edge_list();
-	    output_voronoi_cell_list();
+	    output_node_list();
+	    output_edge_list();
+	    output_cell_list();
 	    output_partition_table(n, m, partition_table, node_list);
 
 	    delete(distance_table);
@@ -314,13 +332,123 @@ public:
 
     int voronoi_to_ellipse()
 	{
+	    //std::vector<Ellipse> new_ellipse_list;
+	    new_ellipse_list.clear();
+	    for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    {
+		Ellipse new_ellipse = ellipse_list[k];
+		if ( voronoi_cell_list[k].node_set.size() > 3 )
+		{
+		    double I1 = 0.0;
+		    double I2 = 0.0;
+		    double I3 = 0.0;
+		    double c1 = 0.0;
+		    double c2 = 0.0;
+		    for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++ )
+		    {
+			c1 = c1 + voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x;
+			c2 = c2 + voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y;
+		    }
+		    c1 = c1/voronoi_cell_list[k].node_set.size();
+		    c2 = c2/voronoi_cell_list[k].node_set.size();
+
+		    for ( int kk=1; kk<voronoi_cell_list[k].node_set.size(); kk++ )
+		    {
+			double x1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk-1]].x - c1;
+			double y1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk-1]].y - c2;
+			double x2 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x - c1;
+			double y2 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y - c2;
+			I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
+			I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
+						  x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
+			I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
+			std::cout << x1 << ", " << y1 << ", ";
+		    }		
+		    int kk = voronoi_cell_list[k].node_set.size()-1;
+		    double x1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x - c1;
+		    double y1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y - c2;
+		    double x2 = voronoi_node_list[voronoi_cell_list[k].node_set[0]].x - c1;
+		    double y2 = voronoi_node_list[voronoi_cell_list[k].node_set[0]].y - c2;
+		    I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
+		    I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
+					      x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
+		    I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
+		    std::cout << x1 << ", " << y1 << "\n";
+		    double lambda1 = (I1 + I3 + sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
+		    double lambda2 = (I1 + I3 - sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
+		    double v1 = lambda1 - I3;
+		    double v2 = I2;
+		    double u1 = lambda2 - I3;
+		    double u2 = I2;
+		    new_ellipse.c1 = c1;
+		    new_ellipse.c2 = c2;
+		    new_ellipse.v1 = v1;
+		    new_ellipse.v2 = v2;
+		    new_ellipse.u1 = u1;
+		    new_ellipse.u2 = u2;
+		    new_ellipse.a = lambda1;
+		    new_ellipse.b = lambda2;
+
+		    std::cout << "ellipse " << k << ":[" << I1 << " " <<
+			I2 << " " << I3 << "]\n";
+		}
+		else
+		{
+		    new_ellipse.v1 = 0.0;
+		    new_ellipse.v2 = 0.0;
+		    new_ellipse.u1 = 0.0;
+		    new_ellipse.u2 = 0.0;
+		    new_ellipse.a = 0.0;
+		    new_ellipse.b = 0.0;
+		}
+		new_ellipse_list.push_back(new_ellipse);
+	    }
 	    return 0;
 	}
 
-    int make_voronoi_node_list(const std::vector<PixelNode> &node_list, 
-			       std::unordered_set<std::unordered_set<int>, ColorHash> &node_color_set,
-			       const int* partition_table,
-			       const int* distance_table)
+    int refine_cell_list()
+	{
+	    for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    {
+		std::vector<int> edges = voronoi_cell_list[k].edge_set;
+		std::vector<int> refined_edges;
+		for ( int kk=0; kk<edges.size(); kk++ )
+		{
+		    if ( voronoi_edge_list[edges[kk]].side_colors.size() == 2 )
+		    {
+		    	if ( voronoi_edge_list[edges[kk]].side_colors[0] == voronoi_cell_list[k].cell_id )
+		    	{
+		    	    voronoi_cell_list[k].neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[1]);
+		    	}
+		    	else
+		    	{
+		    	    voronoi_cell_list[k].neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[0]);
+		    	}
+			refined_edges.push_back(edges[kk]);
+		    }
+		    else
+		    {
+			//std::cout << "erase " << k << "-" << kk << "\n";
+			//voronoi_cell_list[k].edge_set.erase(voronoi_cell_list[k].edge_set.begin() + kk);
+		    }
+		}
+		if ( edges.size() != refined_edges.size() )
+		{
+		    voronoi_cell_list[k].edge_set.clear();
+		    voronoi_cell_list[k].edge_set = refined_edges;
+		}
+
+		double area = 0.0;
+		
+		voronoi_cell_list[k].area = area;
+	    }
+	    return 0;
+	}
+
+    int make_node_list(const std::vector<PixelNode> &node_list, 
+		       std::unordered_set<std::unordered_set<int>, ColorHash> &node_color_set,
+		       const int* partition_table,
+		       const int* distance_table)
 	{
 	    int n = boundary_data.n;
 	    int m = boundary_data.m;
@@ -329,10 +457,10 @@ public:
 	    int mmin = boundary_data.mmin;
 	    int mmax = boundary_data.mmax;
 
-	    double xmin = -boundary_data.margin_L;
-	    double xmax = boundary_data.L + boundary_data.margin_L;
-	    double ymin = -boundary_data.margin_H;
-	    double ymax = boundary_data.H + boundary_data.margin_H;
+	    double xmin = boundary_data.xmin;
+	    double xmax = boundary_data.xmax;
+	    double ymin = boundary_data.ymin;
+	    double ymax = boundary_data.ymax;
 
 	    double dx = boundary_data.res_x;
 	    double dy = boundary_data.res_y;
@@ -382,8 +510,8 @@ public:
 
 			voronoi_node.node_id = node_id;
 			voronoi_node.color_set = node_color;
-			voronoi_node.x = ymin + (j+0.5)*dx;
-			voronoi_node.y = xmin + (i+0.5)*dy;
+			voronoi_node.x = xmin + (j+0.5)*dx;
+			voronoi_node.y = ymin + (i+0.5)*dy;
 		
 			voronoi_node_list.push_back(voronoi_node);
 		    }
@@ -430,8 +558,8 @@ public:
 
 			voronoi_node.node_id = node_id;
 			voronoi_node.color_set = node_color;
-			voronoi_node.x = ymin + (j+0.5)*dx;
-			voronoi_node.y = xmin + (i+0.5)*dy;
+			voronoi_node.x = xmin + (j+0.5)*dx;
+			voronoi_node.y = ymin + (i+0.5)*dy;
 		
 			voronoi_node_list.push_back(voronoi_node);
 		    }
@@ -498,7 +626,7 @@ public:
 	    return is_found;
 	}
 
-    int make_voronoi_cell_list(std::vector<Ellipse> &ellipse_list)
+    int make_cell_list(std::vector<Ellipse> &ellipse_list)
 	{
 	    int cell_id;
 	    for ( int k=0; k<ellipse_list.size(); k++ )	    
@@ -523,7 +651,8 @@ public:
 			node_set.push_back(kk);
 		    }
 		}
-		std::vector<int> sorted_node_set = voronoi_arrange_node(ellipse_list[k].c1, ellipse_list[k].c2, node_set);
+		std::vector<int> sorted_node_set = 
+		    voronoi_arrange_node(ellipse_list[k].c1, ellipse_list[k].c2, node_set);
 		voronoi_cell.node_set = sorted_node_set;
 
 		edge_set = prepare_edges(sorted_node_set);
@@ -535,7 +664,7 @@ public:
 	    return 0;
 	}
 
-    int make_voronoi_edge_list()
+    int make_edge_list()
 	{
 	    voronoi_edge_list.clear();
 	    for ( std::unordered_set<VoronoiEdge, Hash>::iterator it = primary_edge_set.begin();
@@ -555,9 +684,58 @@ public:
 		std::unordered_set<int> color_set1 = node1.color_set;
 		std::unordered_set<int> color_set2 = node2.color_set;
 
+		std::vector<int> side_colors;
+		find_common_colors(color_set1, color_set2, side_colors);
+
+		if ( side_colors.size() == 1 )
+		{
+		    side_colors.clear();
+		}
+		else if ( side_colors.size() == 2 )
+		{
+		    // do nothing
+		}
+		else
+		{
+		    std::cout << "make_edge_list: something wrong.\n";
+		    getchar();
+		}
+		edge.side_colors = side_colors;
 		voronoi_edge_list.push_back(edge);
 		//std::cout << it->node_id1 << " " << it->node_id2 << "\n";
 	    }
+	    return 0;
+	}
+
+    int find_common_colors( const std::unordered_set<int> &color_set1, 
+			    const std::unordered_set<int> &color_set2,
+			    std::vector<int> &side_colors)
+	{
+	    int counter = 0;
+	    side_colors.clear();
+	    //std::cout << "\n";
+	    for ( std::unordered_set<int>::const_iterator it=color_set1.begin(); 
+		  it!=color_set1.end(); it++)
+	    {
+		//std::cout << "find " << *it << "in ";
+		for ( std::unordered_set<int>::const_iterator it2=color_set2.begin(); 
+		      it2!=color_set2.end(); it2++)
+		{
+		    //std::cout << *it2 << " ";
+		}
+		//std::cout << "\n";
+
+		if ( color_set2.find(*it) != color_set2.end() )
+		{
+		    side_colors.push_back(*it);
+		    counter = counter + 1;
+		}
+	    }
+	    // if ( counter != 2 )
+	    // {
+	    // 	std::cout << "find_common_colors: wrong number of colors: " << counter << "\n";
+	    // 	getchar();
+	    // }
 	    return 0;
 	}
 
@@ -632,9 +810,35 @@ public:
 	    return 0;
 	}
 
+    int output_new_ellipse_list()
+	{
+	    std::ofstream fellipse("out/new_ellipses.txt");
+	    if(!fellipse) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
+	    for ( int k=0; k<new_ellipse_list.size(); k++)
+	    {
+		fellipse << new_ellipse_list[k].ellipse_id << ", " <<
+		    new_ellipse_list[k].c1 << "," << 
+		    new_ellipse_list[k].c2 << "," <<
+		    new_ellipse_list[k].v1 << "," << 
+		    new_ellipse_list[k].v2 << "," <<
+		    new_ellipse_list[k].u1 << "," << 
+		    new_ellipse_list[k].u2 << "," <<
+		    new_ellipse_list[k].a << "," << 
+		    new_ellipse_list[k].b << "\n";
+	    }
+
+	    fellipse.close();
+	    return 0;
+	}
+
     int output_partition_table(const int n, const int m, 
 			       const int* partition_table, 
-			       const std::vector<PixelNode> node_list)
+			       const std::vector<PixelNode> &node_list)
 	{
 	    std::ofstream fout("out/partition_table.txt");
 	    if(!fout) 
@@ -680,7 +884,7 @@ public:
 	    return 0;
 	}
 
-    int output_voronoi_node_list()
+    int output_node_list()
 	{
 	    std::ofstream fnode("out/nodes.txt");
 	    if(!fnode) 
@@ -704,11 +908,11 @@ public:
 		fnode << voronoi_node_list[k].node_id << ", " <<
 		    voronoi_node_list[k].x << "," << 
 		    voronoi_node_list[k].y << ",";
-		    for ( std::unordered_set<int>::iterator it=voronoi_node_list[k].color_set.begin(); 
-			  it!=voronoi_node_list[k].color_set.end(); it++)
-		    {
-			fnode << *it << ",";
-		    }
+		for ( std::unordered_set<int>::iterator it=voronoi_node_list[k].color_set.begin(); 
+		      it!=voronoi_node_list[k].color_set.end(); it++)
+		{
+		    fnode << *it << ",";
+		}
 		fnode << "\n";		
 	    }
 
@@ -716,26 +920,64 @@ public:
 	    return 0;
 	}
 
-    int output_voronoi_cell_list()
+    int output_cell_list()
 	{
+	    // output nodes
+	    std::ofstream fnode("out/cell_nodes.txt");
+	    std::ofstream fedge("out/cell_edges.txt");
+	    if(!fnode || !fedge) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
+	    // output edges
 	    for ( int k=0; k<voronoi_cell_list.size(); k++)
 	    {
-		std::cout << "Cell " << voronoi_cell_list[k].cell_id << " node_set: ";
+		std::cout << "Cell " << voronoi_cell_list[k].cell_id << "\n node_set: ";
 		for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++)
 		{
-		    std::cout << std::setw(4) << std::right << voronoi_cell_list[k].node_set[kk];
+		    std::cout << voronoi_cell_list[k].node_set[kk] << " ";
 		}
-		std::cout << "\n";		
+		std::cout << "\n edge_set: ";		
 		for ( int kk=0; kk<voronoi_cell_list[k].edge_set.size(); kk++)
 		{
-		    std::cout << std::setw(4) << std::right << voronoi_cell_list[k].edge_set[kk];
+		    std::cout << voronoi_cell_list[k].edge_set[kk] << " ";
+		}
+		std::cout << "\n neighbor_id: ";		
+		for ( int kk=0; kk<voronoi_cell_list[k].neighbor_id.size(); kk++)
+		{
+		    std::cout << voronoi_cell_list[k].neighbor_id[kk] << " ";
 		}
 		std::cout << "\n";		
+		std::vector<int> node_set = voronoi_cell_list[k].node_set;
+		std::vector<int> edge_set = voronoi_cell_list[k].edge_set;
+
+		for ( int kk=0; kk<node_set.size(); kk++)
+		{
+		    fnode << voronoi_node_list[node_set[kk]].node_id << ", " <<
+			voronoi_node_list[node_set[kk]].x << "," << 
+			voronoi_node_list[node_set[kk]].y << ",";
+		    fnode << "\n";		
+		}
+
+		for ( int kk=0; kk<edge_set.size(); kk++)
+		{
+		    fedge << voronoi_edge_list[edge_set[kk]].edge_id << ", " <<  
+			voronoi_edge_list[edge_set[kk]].node_id1 << ", " <<
+			voronoi_edge_list[edge_set[kk]].node_id2 << ", " <<
+			voronoi_edge_list[edge_set[kk]].x1 << ", " <<
+			voronoi_edge_list[edge_set[kk]].y1 << ", " <<
+			voronoi_edge_list[edge_set[kk]].x2 << ", " <<
+			voronoi_edge_list[edge_set[kk]].y2 << "\n";
+		}
 	    }
+	    fnode.close();
+	    fedge.close();
 	    return 0;
 	}
 
-    int output_voronoi_edge_list()
+    int output_edge_list()
 	{
 	    std::ofstream fedge("out/edges.txt");
 	    if(!fedge) 
@@ -746,17 +988,20 @@ public:
 	    
 	    for ( int k=0; k<voronoi_edge_list.size(); k++)
 	    {
-		std::cout << "Edge " << voronoi_edge_list[k].edge_id << "(" 
-			  << voronoi_edge_list[k].node_id1 << ","
-			  << voronoi_edge_list[k].node_id2 << ") \n";
+		if ( voronoi_edge_list[k].side_colors.size() > 0 )
+		{
+		    std::cout << "Edge " << voronoi_edge_list[k].edge_id << "(" 
+			      << voronoi_edge_list[k].node_id1 << ","
+			      << voronoi_edge_list[k].node_id2 << ") \n";
 
-		fedge <<  voronoi_edge_list[k].edge_id << ", " <<  
-		    voronoi_edge_list[k].node_id1 << ", " <<
-		    voronoi_edge_list[k].node_id2 << ", " <<
-		    voronoi_edge_list[k].x1 << ", " <<
-		    voronoi_edge_list[k].y1 << ", " <<
-		    voronoi_edge_list[k].x2 << ", " <<
-		    voronoi_edge_list[k].y2 << "\n";
+		    fedge <<  voronoi_edge_list[k].edge_id << ", " <<  
+			voronoi_edge_list[k].node_id1 << ", " <<
+			voronoi_edge_list[k].node_id2 << ", " <<
+			voronoi_edge_list[k].x1 << ", " <<
+			voronoi_edge_list[k].y1 << ", " <<
+			voronoi_edge_list[k].x2 << ", " <<
+			voronoi_edge_list[k].y2 << "\n";
+		}
 	    }
 
 	    fedge.close();
@@ -875,10 +1120,10 @@ public:
 	    int mmin = boundary_data.mmin;
 	    int mmax = boundary_data.mmax;
 
-	    double xmin = -boundary_data.margin_L;
-	    double xmax = boundary_data.L + boundary_data.margin_L;
-	    double ymin = -boundary_data.margin_H;
-	    double ymax = boundary_data.H + boundary_data.margin_H;
+	    double xmin = boundary_data.xmin;
+	    double xmax = boundary_data.xmax;
+	    double ymin = boundary_data.ymin;
+	    double ymax = boundary_data.ymax;
 
 	    double dx = boundary_data.res_x;
 	    double dy = boundary_data.res_y;
@@ -893,10 +1138,10 @@ public:
 	    double pixel_y;
 	    for ( int i=0; i<n; i++ )
 	    {
-		pixel_y = xmin + (i+0.5)*dy;
+		pixel_y = ymin + (i+0.5)*dy;
 		for ( int j=0; j<m; j++ )
 		{
-		    pixel_x = ymin + (j+0.5)*dx;
+		    pixel_x = xmin + (j+0.5)*dx;
 		    distance_table[i*m+j] = -1;
 		    partition_table[i*m+j] = -1;
 		    for ( int k=0; k<ellipse_list.size(); k++ )
@@ -924,207 +1169,6 @@ public:
 	    }
 	    return 0;
 	}
-
-//     int find_nodes(int* partition_table, std::vector<PixelNode> &node_list, 
-// 		   std::vector<PixelNode> &raw_node_list,
-// 		   unordered_set<unordered_set<int>, ColorHash> &node_color_set)
-// 	{
-// 	    int n = boundary_data.n;
-// 	    int m = boundary_data.m;
-// 	    int nmin = boundary_data.nmin;
-// 	    int nmax = boundary_data.nmax;
-// 	    int mmin = boundary_data.mmin;
-// 	    int mmax = boundary_data.mmax;
-
-// 	    int nearby_values[8];
-// 	    int num_colors;
-// 	    int color_value;
-// 	    int first_value;
-// 	    int node_id;
-// 	    for ( int i=nmin; i<nmax; i++ )
-// 	    {
-// 		for ( int j=mmin; j<mmax; j++ )
-// 		{
-// 		    nearby_values[0] = partition_table[(i-1)*m+j];
-// 		    nearby_values[1] = partition_table[(i-1)*m+j-1];
-// 		    nearby_values[2] = partition_table[(i)*m+j-1];
-// 		    nearby_values[3] = partition_table[(i+1)*m+j-1];
-// 		    nearby_values[4] = partition_table[(i+1)*m+j];
-// 		    nearby_values[5] = partition_table[(i+1)*m+j+1];
-// 		    nearby_values[6] = partition_table[(i)*m+j+1];
-// 		    nearby_values[7] = partition_table[(i-1)*m+j+1];
-
-// 		    const size_t len = sizeof(nearby_values) / sizeof(nearby_values[0]);
-// 		    std::unordered_set<int> node_color(nearby_values, nearby_values+len);
-// 		    node_color.erase( -1 );
-// 		    if ( (node_color.size() >= 3) && 
-// 			 (node_color_set.find(node_color) == node_color_set.end()) )
-// 		    {
-// 			cout << "new node_color: ";
-// 			for (std::unordered_set<int>::const_iterator it = node_color.begin();
-// 			     it != node_color.end(); it++ )
-// 			{
-// 			    cout << *it << " ";
-// 			}
-// 			cout << "\n";
-
-// 			node_color_set.insert(node_color);
-// 			node_id = i*m + j;
-// 			node_list.push_back(PixelNode(i,j, node_color.size(), node_id));
-// 		    }
-
-// 		    // std::unordered_set<int> set1;
-// 		    // set1.insert(3);
-// 		    // set1.insert(6);
-// 		    // std::unordered_set<int> set2;
-// 		    // set2.insert(6);
-// 		    // set2.insert(3);
-// 		    // if ( set1 == set2 )
-// 		    // {
-// 		    // 	cout << "equal\n";
-// 		    // }
-// 		    // else
-// 		    // {
-// 		    // 	cout << "not equal!\n";			
-// 		    // }
-// 		}
-// 	    }
-
-// /* std::cout << "\n output pixels \n"; */
-// /* for ( int i=0; i<n; i++ ) */
-// /* { */
-// /*     for ( int j=0; j<m; j++ ) */
-// /*     { */
-// /* 	bool found_flag; */
-// /* 	found_flag = false; */
-// /* 	for ( int k=0; k<raw_node_list.size(); k++ ) */
-// /* 	{ */
-// /* 	    if ( raw_node_list[k].irow == i && raw_node_list[k].icol == j ) */
-// /* 	    { */
-// /* 		std::cout << std::setw(2) << std::right << "*" << " "; */
-// /* 		found_flag = true; */
-// /* 		break; */
-// /* 	    } */
-// /* 	} */
-// /* 	if ( found_flag == false ) */
-// /* 	{ */
-// /* 	    std::cout << std::setw(2) << std::right << partition_table[i*m+j] << " "; */
-// /* 	} */
-// /*     } */
-// /*     std::cout << "\n"; */
-// /* } */
-
-// 	    // clean_node(n, m, raw_node_list, node_list);
-
-// 	    // for ( int k=0; k<node_list.size(); k++ )
-// 	    // {
-// 	    // 	std::cout << node_list[k].irow << " " << node_list[k].icol << "\n";
-// 	    // }
-
-// /* std::cout << "\n output pixels size 2: " << node_list.size() << "\n"; */
-// /* for ( int i=0; i<n; i++ ) */
-// /* { */
-// /*     for ( int j=0; j<m; j++ ) */
-// /*     { */
-// /* 	bool found_flag; */
-// /* 	found_flag = false; */
-// /* 	for ( int k=0; k<node_list.size(); k++ ) */
-// /* 	{ */
-// /* 	    if ( node_list[k].irow == i && node_list[k].icol == j ) */
-// /* 	    { */
-// /* 		std::cout << std::setw(2) << std::right << "*" << " "; */
-// /* 		found_flag = true; */
-// /* 		break; */
-// /* 	    } */
-// /* 	} */
-// /* 	if ( found_flag == false ) */
-// /* 	{ */
-// /* 	    std::cout << std::setw(2) << std::right << partition_table[i*m+j] << " "; */
-// /* 	} */
-// /*     } */
-// /*     std::cout << "\n"; */
-// /* } */
-
-// 	    return 0;
-// 	}
-
-    // int clean_node(int n, int m, 
-    // 		   std::vector<PixelNode> &raw_node_list,
-    // 		   std::vector<PixelNode> &node_list)
-    // 	{
-    // 	    std::unordered_set<int> raw_node_set;
-    // 	    int node_id;
-
-    // 	    for ( int k=0; k<raw_node_list.size(); k++ )
-    // 	    {
-    // 		raw_node_set.insert(raw_node_list[k].node_id);
-    // 	    }
-
-    // 	    if ( raw_node_list.size() != raw_node_set.size() )
-    // 	    {
-    // 		std::cout << "clearn_node: something wrong with node id assignment.\n";
-    // 		getchar();
-    // 	    }
-	
-    // 	    for ( int k=0; k<raw_node_list.size(); k++ )
-    // 	    {
-    // 		std::unordered_set<int>::iterator got = raw_node_set.find(raw_node_list[k].node_id);
-    // 		if ( got != raw_node_set.end() )
-    // 		{
-    // 		    if ( raw_node_list[k].degree > 4 )
-    // 		    {
-    // 			std::cout << "find node: something wrong with node degree.\n";
-    // 			getchar();
-    // 		    }
-    // 		    else if ( raw_node_list[k].degree == 4 )
-    // 		    {
-    // 			node_id = raw_node_list[k].node_id;
-    // 			raw_node_set.erase(node_id-m);
-    // 			raw_node_set.erase(node_id-m-1);
-    // 			raw_node_set.erase(node_id-1);
-    // 			raw_node_set.erase(node_id+m-1);
-    // 			raw_node_set.erase(node_id+m);
-    // 			raw_node_set.erase(node_id+m+1);
-    // 			raw_node_set.erase(node_id+1);
-    // 			raw_node_set.erase(node_id-m+1);
-    // 		    }
-    // 		}
-    // 	    }
-    // 	    std::cout << "size:" << raw_node_set.size() << "\n";
-
-    // 	    for ( int k=0; k<raw_node_list.size(); k++ )
-    // 	    {
-    // 		std::unordered_set<int>::iterator got = raw_node_set.find(raw_node_list[k].node_id);
-    // 		if ( got != raw_node_set.end() )
-    // 		{
-    // 		    if ( raw_node_list[k].degree == 3 )
-    // 		    {
-    // 			node_id = raw_node_list[k].node_id;
-    // 			raw_node_set.erase(node_id-m);
-    // 			raw_node_set.erase(node_id-m-1);
-    // 			raw_node_set.erase(node_id-1);
-    // 			raw_node_set.erase(node_id+m-1);
-    // 			raw_node_set.erase(node_id+m);
-    // 			raw_node_set.erase(node_id+m+1);
-    // 			raw_node_set.erase(node_id+1);
-    // 			raw_node_set.erase(node_id-m+1);
-    // 		    }
-    // 		}
-    // 	    }
-    // 	    std::cout << "size:" << raw_node_set.size() << "\n";
-		
-    // 	    node_list.clear();
-    // 	    std::unordered_set<int>::iterator got;
-    // 	    for ( int k=0; k<raw_node_list.size(); k++ )
-    // 	    {
-    // 		got = raw_node_set.find(raw_node_list[k].node_id);
-    // 		if ( got != raw_node_set.end() )
-    // 		{
-    // 		    node_list.push_back(raw_node_list[k]);
-    // 		}
-    // 	    }
-    // 	    std::cout << "size2:" << node_list.size() << "\n";
-    // 	}
 
     template <typename T>
     std::vector<size_t> sort_indexes(const std::vector<T> &v) 

@@ -3,7 +3,7 @@
 #include "geometry.h"
 #include "simulator.h"
 
-int Simulator::run(WorkingData &working_data)
+int Simulator::run()
 {
   double t1, t2;
 
