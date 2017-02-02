@@ -5,6 +5,20 @@ project (PhysModel)
 set (PhysModel_VERSION_MAJOR 0)
 set (PhysModel_VERSION_MINOR 0)
 
+LIST(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmakemodule/")
+set(SuiteSparse_USE_LAPACK_BLAS ON)
+find_package(SuiteSparse QUIET NO_MODULE)  # 1st: Try to locate the *config.cmake file.
+if(NOT SuiteSparse_FOUND)
+  #set(SuiteSparse_VERBOSE ON)
+  find_package(SuiteSparse REQUIRED) # 2nd: Use FindSuiteSparse.cmake module
+  include_directories(${SuiteSparse_INCLUDE_DIRS})
+else()
+  message(STATUS "Find SuiteSparse : include(${USE_SuiteSparse})")
+  include(${USE_SuiteSparse})
+endif()
+MESSAGE(STATUS "SuiteSparse_LIBS: ${SuiteSparse_LIBRARIES}")
+
+
 # add the binary tree to the search path for include files
 # so that we will find TutorialConfig.h
 include_directories ("${PROJECT_BINARY_DIR}")
@@ -39,6 +53,8 @@ add_executable (PhysModel main.cpp)
 target_link_libraries (PhysModel ${EXTRA_LIBS})
 target_link_libraries (PhysModel ${Boost_LIBRARIES})
 target_link_libraries (PhysModel ${GDAL_LIBRARIES})
+TARGET_LINK_LIBRARIES (PhysModel ${SuiteSparse_LIBRARIES})
+#TARGET_LINK_LIBRARIES (PhysModel ${SuiteSparse_LIBRARIES})
 target_link_libraries (PhysModel -lstxxl)
 target_link_libraries (PhysModel -lpthread)
 target_link_libraries (PhysModel -lcurl)
@@ -47,3 +63,6 @@ target_link_libraries (PhysModel -lcurl)
 #target_compile_features(PhysModel PRIVATE cxx_range_for)
 #set_property(TARGET PhysModel PROPERTY CXX_STANDARD 11)
 #set_property(TARGET PhysModel PROPERTY CXX_STANDARD_REQUIRED ON)
+
+# ADD_EXECUTABLE(spqr-test spqr-test.cpp)
+# TARGET_LINK_LIBRARIES(spqr-test ${SuiteSparse_LIBRARIES})

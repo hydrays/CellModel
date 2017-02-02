@@ -10,6 +10,7 @@
 #include <vector>
 #include <unordered_set>
 #include <iomanip>
+#include <map>
 #include "ellipse.h"
 
 #define PI 3.1415926535
@@ -76,6 +77,7 @@ struct BoundaryData
 
 struct VoronoiCell
 {
+    bool is_valid;
     int cell_id;
     std::vector<int> node_set;
     std::vector<int> edge_set;
@@ -98,6 +100,7 @@ struct VoronoiEdge
     int node_id2;
     double x1, y1;
     double x2, y2;
+    double c1, c2;
     double n1;
     double n2;
     double length;
@@ -156,6 +159,7 @@ public:
     std::unordered_set<VoronoiEdge, Hash> primary_edge_set;
     std::vector<Ellipse> ellipse_list;
     std::vector<Ellipse> new_ellipse_list;
+    std::map<int,int> map_cell_id;
 
     int init()
 	{
@@ -167,11 +171,22 @@ public:
 
 	    apply_boundary_condition_ellipse();
 	    ellipse_to_voronoi();
+	    update_map();
 
 	    voronoi_to_ellipse();
 	    output_new_ellipse_list();
 	}
 
+    int update_map()
+	{
+	    map_cell_id.clear();
+	    for ( int k=0; k<voronoi_cell_list.size(); k++ )
+	    {
+		map_cell_id.insert( std::pair<int,int>(voronoi_cell_list[k].cell_id, k) );
+	    }
+	    return 0;
+	}
+    
     int apply_boundary_condition_ellipse()
 	{
 	    double L = boundary_data.L;
@@ -408,21 +423,23 @@ public:
 
     int refine_cell_list()
 	{
-	    for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    //for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    for ( std::vector<VoronoiCell>::iterator it=voronoi_cell_list.begin(); 
+		  it!=voronoi_cell_list.end(); )	    
 	    {
-		std::vector<int> edges = voronoi_cell_list[k].edge_set;
+		std::vector<int> edges = it->edge_set;
 		std::vector<int> refined_edges;
 		for ( int kk=0; kk<edges.size(); kk++ )
 		{
 		    if ( voronoi_edge_list[edges[kk]].side_colors.size() == 2 )
 		    {
-		    	if ( voronoi_edge_list[edges[kk]].side_colors[0] == voronoi_cell_list[k].cell_id )
+		    	if ( voronoi_edge_list[edges[kk]].side_colors[0] == it->cell_id )
 		    	{
-		    	    voronoi_cell_list[k].neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[1]);
+		    	    it->neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[1]);
 		    	}
 		    	else
 		    	{
-		    	    voronoi_cell_list[k].neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[0]);
+		    	    it->neighbor_id.push_back(voronoi_edge_list[edges[kk]].side_colors[0]);
 		    	}
 			refined_edges.push_back(edges[kk]);
 		    }
@@ -434,13 +451,39 @@ public:
 		}
 		if ( edges.size() != refined_edges.size() )
 		{
-		    voronoi_cell_list[k].edge_set.clear();
-		    voronoi_cell_list[k].edge_set = refined_edges;
+		    it->edge_set.clear();
+		    it->edge_set = refined_edges;
 		}
-
-		double area = 0.0;
 		
-		voronoi_cell_list[k].area = area;
+		if ( refined_edges.size() < 3 )
+		{
+		    voronoi_cell_list.erase(it);
+		    //voronoi_cell_list[k].area = -1.0;
+		}
+		else
+		{
+		    it->is_valid = true;
+		    double area = 0.0;
+		    for ( int kk=1; kk<it->node_set.size(); kk++ )
+		    {
+			int node_id1 = it->node_set[kk-1];
+			int node_id2 = it->node_set[kk];
+			double x1 = voronoi_node_list[node_id1].x;
+			double y1 = voronoi_node_list[node_id1].y;
+			double x2 = voronoi_node_list[node_id2].x;
+			double y2 = voronoi_node_list[node_id2].y;
+			area = area + (x1*y2 - x2*y1);
+		    }
+		    int node_id1 = it->node_set[it->node_set.size()-1];
+		    int node_id2 = it->node_set[0];
+		    double x1 = voronoi_node_list[node_id1].x;
+		    double y1 = voronoi_node_list[node_id1].y;
+		    double x2 = voronoi_node_list[node_id2].x;
+		    double y2 = voronoi_node_list[node_id2].y;
+		    area = area + (x1*y2 - x2*y1);
+		    it->area = 0.5*fabs(area);
+		    ++it;
+		}
 	    }
 	    return 0;
 	}
@@ -680,6 +723,8 @@ public:
 		edge.y1 = node1.y;
 		edge.x2 = node2.x;
 		edge.y2 = node2.y;
+		edge.c1 = 0.5*(edge.x1 + edge.x2);
+		edge.c2 = 0.5*(edge.y1 + edge.y2);
 
 		std::unordered_set<int> color_set1 = node1.color_set;
 		std::unordered_set<int> color_set2 = node2.color_set;
@@ -937,13 +982,16 @@ public:
 		std::cout << "Cell " << voronoi_cell_list[k].cell_id << "\n node_set: ";
 		for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++)
 		{
-		    std::cout << voronoi_cell_list[k].node_set[kk] << " ";
+		    std::cout << voronoi_cell_list[k].node_set[kk] << "(" <<
+			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x << ", " <<
+			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y << ") ";
 		}
 		std::cout << "\n edge_set: ";		
 		for ( int kk=0; kk<voronoi_cell_list[k].edge_set.size(); kk++)
 		{
 		    std::cout << voronoi_cell_list[k].edge_set[kk] << " ";
 		}
+		std::cout << "\n area: " << voronoi_cell_list[k].area;
 		std::cout << "\n neighbor_id: ";		
 		for ( int kk=0; kk<voronoi_cell_list[k].neighbor_id.size(); kk++)
 		{
