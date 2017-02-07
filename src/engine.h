@@ -12,7 +12,7 @@
 #include <iomanip>
 #include "ellipse.h"
 #include "geometry.h"
-#include "SuiteSparseQR.hpp"
+//#include "SuiteSparseQR.hpp"
 
 class Engine
 {
