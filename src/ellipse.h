@@ -13,9 +13,10 @@ public:
     double u1, u2;
     double a, b;
     double area;
+    double theta0;
 
 public:
-    //Ellipse(){};
+    Ellipse(){};
     //~Ellipse(){};
     
     Ellipse(int id, double c1, double c2, double v1, double v2, double u1, double u2)

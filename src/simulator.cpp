@@ -7,17 +7,21 @@
 
 int Simulator::run()
 {
+  // std::cout << "test atan2: " << atan2(0.0, 0.1) << "\n";
+  // getchar();
+
   double t1, t2;
 
   Geometry geometry;
   geometry.init();
 
   Force force;
-  force.update_force_field(geometry);
 
   Engine engine;
-  engine.one_step_solution(geometry, force);
+  //engine.one_step_solution(geometry, force);
+  engine.run(geometry, force);
 
+  
   return 0;
 }
 

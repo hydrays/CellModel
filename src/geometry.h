@@ -43,10 +43,10 @@ struct BoundaryData
 	{
 	    L = L_value;
 	    H = H_value;
-	    int margin_n = 40;
-	    int margin_m = 40;
-	    int inner_n = 200;
-	    int inner_m = 200;
+	    int margin_n = 80;
+	    int margin_m = 80;
+	    int inner_n = 400;
+	    int inner_m = 400;
 	    n = inner_n + 2*margin_n;
 	    m = inner_m + 2*margin_m;
 	    res_x = 2.0*L/inner_m;
@@ -75,19 +75,8 @@ struct BoundaryData
 	}
 };
 
-struct VoronoiCell
-{
-    bool is_valid;
-    int cell_id;
-    std::vector<int> node_set;
-    std::vector<int> edge_set;
-    double area;
-    std::vector<int> neighbor_id;
-};
-
 struct VoronoiNode
 {
-    int node_id;
     double x;
     double y;
     std::unordered_set<int> color_set;
@@ -104,6 +93,10 @@ struct VoronoiEdge
     double n1;
     double n2;
     double length;
+    double theta;
+    double theta1, theta2;
+    double tri_sector_area;
+    double ell_sector_area;
     std::vector<int> side_colors;
     VoronoiEdge(int edge_id, int id1, int id2)
 	: edge_id(edge_id), node_id1(id1), node_id2(id2)
@@ -112,6 +105,21 @@ struct VoronoiEdge
 	    n2 = 0.0;
 	    length = -1.0;
 	}
+};
+
+struct VoronoiCell
+{
+    bool is_valid;
+    int cell_id;
+    double c1, c2;
+    Ellipse ellipse;
+    std::vector<int> node_set;
+    std::vector<int> edge_set;
+    std::vector<VoronoiNode> nodes;
+    std::vector<VoronoiEdge> edges;
+    std::vector<VoronoiCell> neighbors;
+    double area;
+    std::vector<int> neighbor_id;
 };
 
 struct Hash {
@@ -152,6 +160,7 @@ class Geometry
 {
 public:
     int MAX_NUM_ELLIPSE = 100000;
+    int cell_number;
     BoundaryData boundary_data;
     std::vector<VoronoiCell> voronoi_cell_list;
     std::vector<VoronoiNode> voronoi_node_list;
@@ -167,14 +176,16 @@ public:
 	    //boundary_data.set_boundary_data(36.0, 36.0);
 
 	    init_ellipse_list();
-	    std::cout << "Status: ellipse list initialized. \n";
-
+	    cell_number = ellipse_list.size();
+	    std::cout << "Status: ellipse list initialized: (num: " << ellipse_list.size() << ") \n";
 	    apply_boundary_condition_ellipse();
+	    std::cout << "Status: ellipse extended: (num: " << ellipse_list.size() << ") \n";
+	    //getchar();
 	    ellipse_to_voronoi();
 	    update_map();
 
-	    voronoi_to_ellipse();
-	    output_new_ellipse_list();
+	    //voronoi_to_ellipse();
+	    //output_new_ellipse_list();
 	}
 
     int update_map()
@@ -249,6 +260,47 @@ public:
 	    return 0;
 	}
 
+
+    int apply_boundary_condition_voronoi()
+	{
+	    double L = boundary_data.L;
+	    double H = boundary_data.H;
+	    double margin_L = boundary_data.margin_L;
+	    double margin_H = boundary_data.margin_H;
+
+	    for ( int k=0; k<voronoi_cell_list.size(); k++ )
+	    {
+		if ( voronoi_cell_list[k].cell_id < 8000 )
+		{
+		    if ( (voronoi_cell_list[k].ellipse.c1 < -L) )
+		    {
+			voronoi_cell_list[k].ellipse.c1 = voronoi_cell_list[k].ellipse.c1 + 2.0*L;
+		    }
+		    if ( (voronoi_cell_list[k].ellipse.c1 > L) )
+		    {
+			voronoi_cell_list[k].ellipse.c1 = voronoi_cell_list[k].ellipse.c1 - 2.0*L;
+		    }
+		    if ( (voronoi_cell_list[k].ellipse.c2 < -H) )
+		    {
+			voronoi_cell_list[k].ellipse.c2 = voronoi_cell_list[k].ellipse.c2 + 2.0*H;
+		    }
+		    if ( (voronoi_cell_list[k].ellipse.c2 > H) )
+		    {
+			voronoi_cell_list[k].ellipse.c2 = voronoi_cell_list[k].ellipse.c2 - 2.0*H;
+		    }
+		    // //if ( (voronoi_cell_list[k].ellipse.a > 1.0) )
+		    // {
+		    // 	voronoi_cell_list[k].ellipse.a = 0.5;
+		    // }
+		    // //if ( (voronoi_cell_list[k].ellipse.b > 1.0) )
+		    // {
+		    // 	voronoi_cell_list[k].ellipse.b = 0.5;
+		    // }
+		}
+	    }
+	    return 0;
+	}
+
     int init_ellipse_list()
 	{
 	    std::ifstream finit("initPos.txt");
@@ -263,19 +315,20 @@ public:
 	    while (finit >> cx >>  cy)
 	    {
 		id = id + 1;
-		double v1 = 0.5;
-		double v2 = 0.0;
-		double u1 = 0.0;
-		double u2 = 0.5;
-		double a = sqrt(v1*v1 + v2*v2);
-		double b = sqrt(u1*u1 + u2*u2);
-		double area = PI*a*b;
-		std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
-		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
-		ellipse.a = a;
-		ellipse.b = b;
-		ellipse.area = area;
-		ellipse_list.push_back(ellipse);
+		//if ( id != 110 && id != 88 )
+		{
+		    double v1 = 1.0;
+		    double v2 = 0.0;
+		    double u1 = 0.0;
+		    double u2 = 0.5;
+		    //double a = sqrt(v1*v1 + v2*v2);
+		    //double b = sqrt(u1*u1 + u2*u2);
+		    //std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
+		    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
+		    ellipse.area = PI*ellipse.a*ellipse.b;
+		    ellipse.theta0 = 0.0;
+		    ellipse_list.push_back(ellipse);
+		}
 	    }
 
 	    // for ( int i=0; i<3; i++ )
@@ -329,14 +382,20 @@ public:
 
 	    //find_nodes(partition_table, node_list, raw_node_list, node_color_set);
 
+	    voronoi_node_list.clear();
+	    voronoi_edge_list.clear();
+	    voronoi_cell_list.clear();
+	    primary_edge_set.clear();
+
 	    make_node_list(node_list, node_color_set, partition_table, distance_table);
+	    refine_node_list();
 	    make_cell_list(ellipse_list);
 	    make_edge_list(); // must after "make_voronoi_cell_list"
 	    refine_cell_list();
 
-	    output_ellipse_list();
-	    output_node_list();
-	    output_edge_list();
+	    write_ellipse_tofile();
+	    //output_node_list();
+	    //output_edge_list();
 	    output_cell_list();
 	    output_partition_table(n, m, partition_table, node_list);
 
@@ -424,6 +483,7 @@ public:
     int refine_cell_list()
 	{
 	    //for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    std::cout << "refining \n";
 	    for ( std::vector<VoronoiCell>::iterator it=voronoi_cell_list.begin(); 
 		  it!=voronoi_cell_list.end(); )	    
 	    {
@@ -445,25 +505,49 @@ public:
 		    }
 		    else
 		    {
-			//std::cout << "erase " << k << "-" << kk << "\n";
+			//std::cout << "wrong edge here " << it->cell_id << "-" << kk << "\n";
 			//voronoi_cell_list[k].edge_set.erase(voronoi_cell_list[k].edge_set.begin() + kk);
 		    }
 		}
-		if ( edges.size() != refined_edges.size() )
+		if ( (edges.size() != refined_edges.size()) || ( refined_edges.size() < 3 ) )
 		{
-		    it->edge_set.clear();
-		    it->edge_set = refined_edges;
-		}
-		
-		if ( refined_edges.size() < 3 )
-		{
+		    //output_cell(*it);
+		    if ( it->cell_id < 8000 )
+		    {
+			std::cout << "remove wrong cell? **** \n";
+			output_cell(*it);
+			for ( int kk=0; kk<edges.size(); kk++ )
+			{
+			    if ( voronoi_edge_list[edges[kk]].side_colors.size() != 2 )
+			    {
+				std::cout << "at edge " << edges[kk] << " side colors: "
+					  << voronoi_edge_list[edges[kk]].side_colors.size() << "id: "
+					  << voronoi_edge_list[edges[kk]].edge_id
+					  << "( node1: " << voronoi_edge_list[edges[kk]].node_id1
+					  << "(" << voronoi_edge_list[edges[kk]].x1
+					  << ", " << voronoi_edge_list[edges[kk]].y1
+					  << ") - node2: " << voronoi_edge_list[edges[kk]].node_id2
+					  << "(" << voronoi_edge_list[edges[kk]].x2
+					  << ", " << voronoi_edge_list[edges[kk]].y2
+					  << ") )\n";
+				output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id1]);
+				output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id2]);
+			    }
+			}
+			getchar();
+		    }		    
 		    voronoi_cell_list.erase(it);
 		    //voronoi_cell_list[k].area = -1.0;
+		    //it->is_valid = false;
+		    //++it;
 		}
 		else
 		{
 		    it->is_valid = true;
 		    double area = 0.0;
+		    it->edges.clear();
+		    it->nodes.clear();
+		    it->nodes.push_back(voronoi_node_list[it->node_set[0]]);
 		    for ( int kk=1; kk<it->node_set.size(); kk++ )
 		    {
 			int node_id1 = it->node_set[kk-1];
@@ -472,6 +556,43 @@ public:
 			double y1 = voronoi_node_list[node_id1].y;
 			double x2 = voronoi_node_list[node_id2].x;
 			double y2 = voronoi_node_list[node_id2].y;
+			it->nodes.push_back(voronoi_node_list[node_id2]);
+
+			VoronoiEdge current_edge =  voronoi_edge_list[it->edge_set[kk-1]];
+			double n1 = (y2-y1)/sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) );
+			double n2 = -(x2-x1)/sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) );
+			current_edge.n1 = n1;
+			current_edge.n2 = n2;
+			current_edge.theta = atan2(current_edge.c2 - it->c2, current_edge.c1 - it->c1);
+			current_edge.theta1 = atan2(y1 - it->c2, x1 - it->c1);
+			current_edge.theta2 = atan2(y2 - it->c2, x2 - it->c1);
+			if ( current_edge.theta1 >= current_edge.theta2 )
+			{
+			    std::cout << "check theta1 and theta2 ? theta1:" <<
+				current_edge.theta1 << " theta2: " << 
+				current_edge.theta2 << "\n";
+			    getchar();
+			}
+			double tri_sector_area = get_tri_sector_area(it->c1, it->c2, x1, y1, x2, y2);
+			double ell_sector_area = get_ell_sector_area(it->ellipse, 
+								     current_edge.theta1, 
+								     current_edge.theta2);
+			
+			current_edge.tri_sector_area = tri_sector_area;
+			current_edge.ell_sector_area = ell_sector_area;
+			it->edges.push_back(current_edge);
+
+			// check consistency
+			if ( (x1 != current_edge.x1) && (x1 != current_edge.x2) )
+			{
+			    std::cout << "something wrong? " << x1 << " " <<
+				x2 << "edge xy " << current_edge.x1 << " " <<
+				current_edge.x2 << "size: " << it->edge_set.size() << "\n";
+			    
+			    output_cell(*it);
+			    getchar();
+			}
+
 			area = area + (x1*y2 - x2*y1);
 		    }
 		    int node_id1 = it->node_set[it->node_set.size()-1];
@@ -480,8 +601,66 @@ public:
 		    double y1 = voronoi_node_list[node_id1].y;
 		    double x2 = voronoi_node_list[node_id2].x;
 		    double y2 = voronoi_node_list[node_id2].y;
+
+		    VoronoiEdge current_edge =  voronoi_edge_list[it->edge_set[it->edge_set.size()-1]];
+		    double n1 = (y2-y1)/sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) );
+		    double n2 = -(x2-x1)/sqrt( (y2-y1)*(y2-y1) + (x2-x1)*(x2-x1) );
+		    current_edge.n1 = n1;
+		    current_edge.n2 = n2;
+		    current_edge.theta = atan2(current_edge.c2, current_edge.c1);
+		    current_edge.theta1 = atan2(y1 - it->c2, x1 - it->c1);
+		    current_edge.theta2 = 2.0*PI + atan2(y2 - it->c2, x2 - it->c1);
+		    if ( current_edge.theta1 >= current_edge.theta2 )
+		    {
+			std::cout << "check theta1 and theta2 ? theta1:" <<
+			    current_edge.theta1 << " theta2: " << 
+			    current_edge.theta2 << "\n";
+			getchar();
+		    }
+		    double tri_sector_area = get_tri_sector_area(it->c1, it->c2, x1, y1, x2, y2);
+		    double ell_sector_area = get_ell_sector_area(it->ellipse, 
+								 current_edge.theta1, 
+								 current_edge.theta2);
+		    
+		    current_edge.tri_sector_area = tri_sector_area;
+		    current_edge.ell_sector_area = ell_sector_area;
+		    it->edges.push_back(current_edge);
+		    // check consistency
+		    if ( (x1 != current_edge.x1) && (x1 != current_edge.x2) )
+		    {
+			std::cout << "something wrong 2? " << x1 << " " <<
+			    x2 << "edge xy " << current_edge.x1 << " " <<
+			    current_edge.x2 << "size: " << it->edge_set.size() << "\n";
+			
+			output_cell(*it);
+			getchar();
+		    }
+
 		    area = area + (x1*y2 - x2*y1);
 		    it->area = 0.5*fabs(area);
+		    // check consistency for area
+		    double sum_area1 = 0.0;
+		    double sum_area2 = 0.0;
+		    for ( int kk=0; kk < it->edges.size(); kk++ )
+		    {
+			sum_area1 = sum_area1 + it->edges[kk].tri_sector_area;
+			sum_area2 = sum_area2 + it->edges[kk].ell_sector_area;
+		    }
+		    if ( fabs(sum_area1 - it->area) > 0.001 )
+		    {
+			std::cout << "total area does not add up!\n";
+			std::cout << "total area: " << it->area
+				  << "sumed area: " << sum_area1 << "\n";
+			getchar();
+		    }
+		    if ( fabs(sum_area2 - it->ellipse.area) > 0.001 )
+		    {
+			std::cout << "ellipse area does not add up!\n";
+			std::cout << "ellipse area: " << it->ellipse.area
+				  << "sumed area: " << sum_area2
+				  << it->ellipse.a << " " << it->ellipse.b << "\n";
+			getchar();
+		    }
 		    ++it;
 		}
 	    }
@@ -490,7 +669,7 @@ public:
 
     int make_node_list(const std::vector<PixelNode> &node_list, 
 		       std::unordered_set<std::unordered_set<int>, ColorHash> &node_color_set,
-		       const int* partition_table,
+		       int* partition_table,
 		       const int* distance_table)
 	{
 	    int n = boundary_data.n;
@@ -515,6 +694,88 @@ public:
 	    }
 	    voronoi_node_list.clear();
 	    int nearby_values[8];
+
+	    for ( int i=nmin; i<nmax; i++ )
+	    {
+		for ( int j=mmin; j<mmax; j++ )
+		{
+		    nearby_values[0] = partition_table[(i-1)*m+j];
+		    nearby_values[1] = partition_table[(i-1)*m+j-1];
+		    nearby_values[2] = partition_table[(i)*m+j-1];
+		    nearby_values[3] = partition_table[(i+1)*m+j-1];
+		    nearby_values[4] = partition_table[(i+1)*m+j];
+		    nearby_values[5] = partition_table[(i+1)*m+j+1];
+		    nearby_values[6] = partition_table[(i)*m+j+1];
+		    nearby_values[7] = partition_table[(i-1)*m+j+1];
+
+		    const size_t len = sizeof(nearby_values) / sizeof(nearby_values[0]);
+		    std::unordered_set<int> node_color(nearby_values, nearby_values+len);
+		    node_color.erase( -1 );
+		    //if ( (node_color.size() >= 3) && 
+		    if ( (node_color.size() > 5) &&
+			 (node_color_set.find(node_color) == node_color_set.end()) )
+		    {
+			std::cout << "a high-fold node: " << node_color.size() << " colors: ";
+			getchar();
+		    }
+		}
+	    }
+
+	    for ( int i=nmin; i<nmax; i++ )
+	    {
+		for ( int j=mmin; j<mmax; j++ )
+		{
+		    nearby_values[0] = partition_table[(i-1)*m+j];
+		    nearby_values[1] = partition_table[(i-1)*m+j-1];
+		    nearby_values[2] = partition_table[(i)*m+j-1];
+		    nearby_values[3] = partition_table[(i+1)*m+j-1];
+		    nearby_values[4] = partition_table[(i+1)*m+j];
+		    nearby_values[5] = partition_table[(i+1)*m+j+1];
+		    nearby_values[6] = partition_table[(i)*m+j+1];
+		    nearby_values[7] = partition_table[(i-1)*m+j+1];
+
+		    const size_t len = sizeof(nearby_values) / sizeof(nearby_values[0]);
+		    std::unordered_set<int> node_color(nearby_values, nearby_values+len);
+		    node_color.erase( -1 );
+		    //if ( (node_color.size() >= 3) && 
+		    if ( (node_color.size() == 5) &&
+			 (node_color_set.find(node_color) == node_color_set.end()) )
+		    {
+			// std::cout << "new node_color: size " << node_color.size() << " colors: ";
+			// for (std::unordered_set<int>::const_iterator it = node_color.begin();
+			//      it != node_color.end(); it++ )
+			// {
+			//     std::cout << *it << " ";
+			// }
+			// std::cout << "\n";
+
+			node_color_set.insert(node_color);
+
+			VoronoiNode voronoi_node;
+			//int node_id = i*m + j;
+			//id = id + 1;
+			//i = node_list[k].irow;
+			//j = node_list[k].icol;
+
+			//voronoi_node.node_id = node_id;
+			voronoi_node.color_set = node_color;
+			voronoi_node.x = xmin + (j+0.5)*dx;
+			voronoi_node.y = ymin + (i+0.5)*dy;
+		
+			voronoi_node_list.push_back(voronoi_node);
+			// partition_table[(i-1)*m+j] = 99799;
+			// partition_table[(i-1)*m+j-1] = 99799;
+			// partition_table[(i)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j] = 99799;
+			// partition_table[(i+1)*m+j+1] = 99799;
+			// partition_table[(i)*m+j+1] = 99799;
+			// partition_table[(i-1)*m+j+1] = 99799;
+			// partition_table[i*m+j] = 99799;
+		    }
+		}
+	    }
+
 	    for ( int i=nmin; i<nmax; i++ )
 	    {
 		for ( int j=mmin; j<mmax; j++ )
@@ -533,30 +794,40 @@ public:
 		    node_color.erase( -1 );
 		    //if ( (node_color.size() >= 3) && 
 		    if ( (node_color.size() == 4) &&
-			 (node_color_set.find(node_color) == node_color_set.end()) )
+			 (node_color_set.find(node_color) == node_color_set.end()) &&
+			 !isSubset(node_color, node_color_set) )
 		    {
-			std::cout << "new node_color: size " << node_color.size() << " colors: ";
-			for (std::unordered_set<int>::const_iterator it = node_color.begin();
-			     it != node_color.end(); it++ )
-			{
-			    std::cout << *it << " ";
-			}
-			std::cout << "\n";
+			// std::cout << "new node_color: size " << node_color.size() << " colors: ";
+			// for (std::unordered_set<int>::const_iterator it = node_color.begin();
+			//      it != node_color.end(); it++ )
+			// {
+			//     std::cout << *it << " ";
+			// }
+			// std::cout << "\n";
 
 			node_color_set.insert(node_color);
 
 			VoronoiNode voronoi_node;
-			int node_id = i*m + j;
+			//int node_id = i*m + j;
 			//id = id + 1;
 			//i = node_list[k].irow;
 			//j = node_list[k].icol;
 
-			voronoi_node.node_id = node_id;
+			//voronoi_node.node_id = node_id;
 			voronoi_node.color_set = node_color;
 			voronoi_node.x = xmin + (j+0.5)*dx;
 			voronoi_node.y = ymin + (i+0.5)*dy;
 		
 			voronoi_node_list.push_back(voronoi_node);
+			// partition_table[(i-1)*m+j] = 99799;
+			// partition_table[(i-1)*m+j-1] = 99799;
+			// partition_table[(i)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j] = 99799;
+			// partition_table[(i+1)*m+j+1] = 99799;
+			// partition_table[(i)*m+j+1] = 99799;
+			// partition_table[(i-1)*m+j+1] = 99799;
+			// partition_table[i*m+j] = 99799;
 		    }
 		}
 	    }
@@ -579,32 +850,41 @@ public:
 		    node_color.erase( -1 );
 
 		    if ( (node_color.size() == 3) && 
-			 isLocalMaximum(i, j, n, m, distance_table) &&
+			 //isLocalMaximum(i, j, n, m, distance_table) &&
 			 (node_color_set.find(node_color) == node_color_set.end()) &&
 			 !isSubset(node_color, node_color_set) )
 		    {
-			std::cout << "new node_color: ";
-			for (std::unordered_set<int>::const_iterator it = node_color.begin();
-			     it != node_color.end(); it++ )
-			{
-			    std::cout << *it << " ";
-			}
-			std::cout << "\n";
+			// std::cout << "new node_color: ";
+			// for (std::unordered_set<int>::const_iterator it = node_color.begin();
+			//      it != node_color.end(); it++ )
+			// {
+			//     std::cout << *it << " ";
+			// }
+			// std::cout << "\n";
 
 			node_color_set.insert(node_color);
 
 			VoronoiNode voronoi_node;
-			int node_id = i*m + j;
+			//int node_id = i*m + j;
 			//id = id + 1;
 			//i = node_list[k].irow;
 			//j = node_list[k].icol;
 
-			voronoi_node.node_id = node_id;
+			//voronoi_node.node_id = node_id;
 			voronoi_node.color_set = node_color;
 			voronoi_node.x = xmin + (j+0.5)*dx;
 			voronoi_node.y = ymin + (i+0.5)*dy;
 		
 			voronoi_node_list.push_back(voronoi_node);
+			// partition_table[(i-1)*m+j] = 99799;
+			// partition_table[(i-1)*m+j-1] = 99799;
+			// partition_table[(i)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j-1] = 99799;
+			// partition_table[(i+1)*m+j] = 99799;
+			// partition_table[(i+1)*m+j+1] = 99799;
+			// partition_table[(i)*m+j+1] = 99799;
+			// partition_table[(i-1)*m+j+1] = 99799;
+			// partition_table[i*m+j] = 99799;
 		    }
 		    // std::unordered_set<int> set1;
 		    // set1.insert(3);
@@ -629,6 +909,70 @@ public:
 		std::cout << "make_voronoi_node_list: unbalanced out come.\n";
 		getchar();
 	    }
+	    
+
+	    return 0;
+	}
+
+    int refine_node_list()
+	{
+	    double dx = boundary_data.res_x;
+	    double dy = boundary_data.res_y;
+	    if ( dx<=0 || dy<=0 )
+	    {
+		std::cout << "make_voronoi_node_list: parameter wrong \n";
+		getchar();
+	    }
+
+	    double dist_up = 1.5*(dx+dy);
+	    double dist_low = 0.1*(dx+dy);
+
+	    std::vector<VoronoiNode> new_node_list;
+	    for ( std::vector<VoronoiNode>::iterator it=voronoi_node_list.begin(); 
+		  it!=voronoi_node_list.end(); ++it)	    
+	    {
+		int found = 0;
+		for ( int k=0; k<new_node_list.size(); k++ )
+		{
+		    double dist = fabs(it->x - new_node_list[k].x) + fabs(it->y - new_node_list[k].y);
+		    if ( (dist > dist_low) && (dist < dist_up) )
+		    {
+			// add the color_set of it to node k
+			for ( std::unordered_set<int>::const_iterator it_color = it->color_set.begin();
+			      it_color != it->color_set.end(); it_color++ )
+			{
+			    new_node_list[k].color_set.insert(*it_color);
+			}
+			found = 1;
+			std::cout << "remove nearby nodes and add colors\n";
+			std::cout << "old color_set \n";
+			for (std::unordered_set<int>::const_iterator it2 = it->color_set.begin();
+			     it2 != it->color_set.end(); it2++ )
+			{
+			    std::cout << *it2 << " ";
+			}
+			std::cout << "\n";
+			std::cout << "new color_set \n";
+			for (std::unordered_set<int>::const_iterator it3 = new_node_list[k].color_set.begin();
+			     it3 != new_node_list[k].color_set.end(); it3++ )
+			{
+			    std::cout << *it3 << " ";
+			}
+			//getchar();
+		    }
+		}
+		if ( found == 0 )
+		{
+		    new_node_list.push_back(*it);
+		}
+	    }
+	    if (voronoi_node_list.size() != new_node_list.size() )
+	    {
+		std::cout << "old node list size: " << voronoi_node_list.size() << "\n";
+		std::cout << "new node list size: " << new_node_list.size() << "\n";
+		//getchar();
+	    }
+	    voronoi_node_list = new_node_list;
 	    return 0;
 	}
 
@@ -679,7 +1023,10 @@ public:
 		std::vector<int> edge_set;
 		node_set.clear();
 		cell_id = ellipse_list[k].ellipse_id;
+		voronoi_cell.ellipse = ellipse_list[k];
 		voronoi_cell.cell_id = cell_id;
+		voronoi_cell.c1 = ellipse_list[k].c1;
+		voronoi_cell.c2 = ellipse_list[k].c2;
 
 		//std::cout << "make_voronoi_cell_list: cell_id" << cell_id << ":";
 		 
@@ -690,6 +1037,7 @@ public:
 		    if ( got != voronoi_node_list[kk].color_set.end() )
 		    {	
 			//std::cout << "find node\n"; 
+			// we do not use node_id, simple use array index AS its id.
 			//node_set.push_back(voronoi_node_list[kk].node_id);
 			node_set.push_back(kk);
 		    }
@@ -710,6 +1058,9 @@ public:
     int make_edge_list()
 	{
 	    voronoi_edge_list.clear();
+	    //make sure the edge_id is the same as the index in edge_list
+	    VoronoiEdge dummy(0,0,0);
+	    voronoi_edge_list.resize(primary_edge_set.size(), dummy);
 	    for ( std::unordered_set<VoronoiEdge, Hash>::iterator it = primary_edge_set.begin();
 		  it != primary_edge_set.end(); it++ )
 	    {
@@ -725,6 +1076,8 @@ public:
 		edge.y2 = node2.y;
 		edge.c1 = 0.5*(edge.x1 + edge.x2);
 		edge.c2 = 0.5*(edge.y1 + edge.y2);
+		edge.n1 = 0.0;
+		edge.n2 = 0.0;
 
 		std::unordered_set<int> color_set1 = node1.color_set;
 		std::unordered_set<int> color_set2 = node2.color_set;
@@ -743,11 +1096,38 @@ public:
 		else
 		{
 		    std::cout << "make_edge_list: something wrong.\n";
+		    std::cout << side_colors.size() << "\n";
+		    std::cout << edge.x1 << " " << edge.x2 << "\n";
+		    std::cout << edge.y1 << " " << edge.y2 << "\n";
+		    std::cout << it->node_id1 << " " << it->node_id2 << "\n";
+		    for (std::unordered_set<int>::const_iterator it = color_set1.begin();
+			 it != color_set1.end(); it++ )
+		    {
+			std::cout << *it << " ";
+		    }
+		    std::cout << "\n";
+		    for (std::unordered_set<int>::const_iterator it = color_set2.begin();
+			 it != color_set2.end(); it++ )
+		    {
+			std::cout << *it << " ";
+		    }
+		    std::cout << "\n";
+		    side_colors.clear();
 		    getchar();
 		}
 		edge.side_colors = side_colors;
-		voronoi_edge_list.push_back(edge);
-		//std::cout << it->node_id1 << " " << it->node_id2 << "\n";
+		//make sure the edge_id is the same as the index in edge_list
+		voronoi_edge_list[it->edge_id] = edge;
+		//std::cout << it->edge_id << " " << it->node_id1 << " " << it->node_id2 << "\n";
+	    }
+	    //std::cout << "voronoi edge list size: " << voronoi_edge_list.size() << "\n";
+	    for ( int k=0; k<voronoi_edge_list.size(); k++ )
+	    {
+		if ( voronoi_edge_list[k].edge_id != k )
+		{
+		    std::cout << "voronoi edge list wrong id: \n";
+		    getchar();
+		}
 	    }
 	    return 0;
 	}
@@ -788,26 +1168,39 @@ public:
 	{
 	    std::vector<int> edge_set;
 	    edge_set.clear();
-	    int start_node_id;
-	    int end_node_id;
-	    for ( int k=1; k<node_set.size(); k++ )
+	    int start_node;
+	    int end_node;
+	    int node_index1;
+	    int node_index2;
+	    if ( node_set.size() > 1 )
 	    {
-		int node_id1 = node_set[k];
-		int node_id2 = node_set[k-1];
-		if ( node_id1 > node_id2 )
+		for ( int k=0; k<node_set.size(); k++ )
 		{
-		    start_node_id = node_id2;
-		    end_node_id = node_id1;
+		    if ( k == node_set.size()-1 )
+		    {
+		    	node_index1 = node_set[0];
+		    	node_index2 = node_set[k];
+		    }
+		    else
+		    {
+		    	node_index1 = node_set[k+1];
+		    	node_index2 = node_set[k];
+		    }
+		    if ( node_index1 > node_index2 )
+		    {
+			start_node = node_index2;
+			end_node = node_index1;
+		    }
+		    else
+		    {
+			end_node = node_index2;
+			start_node = node_index1;
+		    }
+		    VoronoiEdge edge(primary_edge_set.size(), start_node, end_node);
+		    primary_edge_set.insert(edge);
+		    std::unordered_set<VoronoiEdge, Hash>::iterator got = primary_edge_set.find(edge);
+		    edge_set.push_back(got->edge_id);
 		}
-		else
-		{
-		    end_node_id = node_id2;
-		    start_node_id = node_id1;
-		}
-		VoronoiEdge edge(primary_edge_set.size(), start_node_id, end_node_id);
-		primary_edge_set.insert(edge);
-		std::unordered_set<VoronoiEdge, Hash>::iterator got = primary_edge_set.find(edge);
-		edge_set.push_back(got->edge_id);
 	    }
 	    return edge_set;
 	}
@@ -835,7 +1228,43 @@ public:
 	    return sorted_node_set;
 	}
     
-    int output_ellipse_list()
+    int update_ellipse_list()
+	{
+	    ellipse_list.clear();
+	    for ( int k=0; k<voronoi_cell_list.size(); k++)
+	    {
+		if ( voronoi_cell_list[k].cell_id < 8000 )
+		{
+		    ellipse_list.push_back(voronoi_cell_list[k].ellipse);
+		}
+	    }
+	    return 0;
+	}
+
+    int output_ellipse_list(std::string file_index)
+	{
+	    std::ofstream fellipse("out/ellipses" + file_index + ".txt");
+	    if(!fellipse) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
+	    for ( int k=0; k<voronoi_cell_list.size(); k++)
+	    {
+		if ( voronoi_cell_list[k].cell_id < 8000 )
+		{
+		    fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
+			voronoi_cell_list[k].ellipse.c1 << "," << 
+			voronoi_cell_list[k].ellipse.c2 << "\n";
+		}
+	    }
+
+	    fellipse.close();
+	    return 0;
+	}
+
+    int write_ellipse_tofile()
 	{
 	    std::ofstream fellipse("out/ellipses.txt");
 	    if(!fellipse) 
@@ -848,7 +1277,13 @@ public:
 	    {
 		fellipse << ellipse_list[k].ellipse_id << ", " <<
 		    ellipse_list[k].c1 << "," << 
-		    ellipse_list[k].c2 << "\n";
+		    ellipse_list[k].c2 << "," <<
+		    ellipse_list[k].v1 << "," << 
+		    ellipse_list[k].v2 << "," <<
+		    ellipse_list[k].u1 << "," << 
+		    ellipse_list[k].u2 << "," <<
+		    ellipse_list[k].a << "," << 
+		    ellipse_list[k].b << "\n";
 	    }
 
 	    fellipse.close();
@@ -940,7 +1375,7 @@ public:
 
 	    for ( int k=0; k<voronoi_node_list.size(); k++)
 	    {
-		std::cout << "Node " << voronoi_node_list[k].node_id << "(" 
+		std::cout << "Node " << k << "(" 
 			  << voronoi_node_list[k].x << ","
 			  << voronoi_node_list[k].y << ") colors: ";
 		for ( std::unordered_set<int>::iterator it=voronoi_node_list[k].color_set.begin(); 
@@ -950,7 +1385,7 @@ public:
 		}
 		std::cout << "\n";		
 
-		fnode << voronoi_node_list[k].node_id << ", " <<
+		fnode << k << ", " <<
 		    voronoi_node_list[k].x << "," << 
 		    voronoi_node_list[k].y << ",";
 		for ( std::unordered_set<int>::iterator it=voronoi_node_list[k].color_set.begin(); 
@@ -962,6 +1397,20 @@ public:
 	    }
 
 	    fnode.close();
+	    return 0;
+	}
+
+    int output_node(VoronoiNode &node)
+	{
+	    std::cout << "output node: "
+		      << node.x << ","
+		      << node.y << ") colors: ";
+	    for ( std::unordered_set<int>::iterator it=node.color_set.begin(); 
+		  it!=node.color_set.end(); it++)
+	    {
+		std::cout << *it << " ";
+	    }
+	    std::cout << "\n";		
 	    return 0;
 	}
 
@@ -986,10 +1435,17 @@ public:
 			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x << ", " <<
 			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y << ") ";
 		}
-		std::cout << "\n edge_set: ";		
+		std::cout << "\n edge_set: \n";		
 		for ( int kk=0; kk<voronoi_cell_list[k].edge_set.size(); kk++)
 		{
-		    std::cout << voronoi_cell_list[k].edge_set[kk] << " ";
+		    std::cout << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].edge_id 
+			      << "( node1: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id1
+			      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x1 
+			      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y1
+			      << ") - node2: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id2
+			      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x2
+			      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y2
+			      << ") )\n";
 		}
 		std::cout << "\n area: " << voronoi_cell_list[k].area;
 		std::cout << "\n neighbor_id: ";		
@@ -1003,7 +1459,7 @@ public:
 
 		for ( int kk=0; kk<node_set.size(); kk++)
 		{
-		    fnode << voronoi_node_list[node_set[kk]].node_id << ", " <<
+		    fnode << node_set[kk] << ", " <<
 			voronoi_node_list[node_set[kk]].x << "," << 
 			voronoi_node_list[node_set[kk]].y << ",";
 		    fnode << "\n";		
@@ -1025,6 +1481,38 @@ public:
 	    return 0;
 	}
 
+    int output_cell(VoronoiCell &cell)
+	{
+	    std::cout << "Cell " << cell.cell_id << "\n node_set: ";
+	    for ( int kk=0; kk<cell.node_set.size(); kk++)
+	    {
+		std::cout << cell.node_set[kk] << "(" <<
+		    voronoi_node_list[cell.node_set[kk]].x << ", " <<
+		    voronoi_node_list[cell.node_set[kk]].y << ") ";
+	    }
+	    std::cout << "\n edge_set: \n";		
+	    for ( int kk=0; kk<cell.edge_set.size(); kk++)
+	    {
+		std::cout << voronoi_edge_list[cell.edge_set[kk]].edge_id 
+			  << "( node1: " << voronoi_edge_list[cell.edge_set[kk]].node_id1
+			  << "(" << voronoi_edge_list[cell.edge_set[kk]].x1 
+			  << ", " << voronoi_edge_list[cell.edge_set[kk]].y1
+			  << ") - node2: " << voronoi_edge_list[cell.edge_set[kk]].node_id2
+			  << "(" << voronoi_edge_list[cell.edge_set[kk]].x2
+			  << ", " << voronoi_edge_list[cell.edge_set[kk]].y2
+			  << ") )\n";
+	    }
+	    std::cout << "\n area: " << cell.area;
+	    std::cout << "\n neighbor_id: ";		
+	    for ( int kk=0; kk<cell.neighbor_id.size(); kk++)
+	    {
+		std::cout << cell.neighbor_id[kk] << " ";
+	    }
+	    std::cout << "\n";		
+	    
+	    return 0;
+	}
+
     int output_edge_list()
 	{
 	    std::ofstream fedge("out/edges.txt");
@@ -1034,11 +1522,12 @@ public:
 		return -1; 
 	    }
 	    
+	    std::cout << "output edges: " << voronoi_edge_list.size(); 
 	    for ( int k=0; k<voronoi_edge_list.size(); k++)
 	    {
 		if ( voronoi_edge_list[k].side_colors.size() > 0 )
 		{
-		    std::cout << "Edge " << voronoi_edge_list[k].edge_id << "(" 
+		    std::cout << "Edge (" << k << "): " << voronoi_edge_list[k].edge_id << "(" 
 			      << voronoi_edge_list[k].node_id1 << ","
 			      << voronoi_edge_list[k].node_id2 << ") \n";
 
@@ -1232,6 +1721,26 @@ public:
 
     	    return idx;
     	}
+
+    double get_tri_sector_area(const double c1, const double c2,
+			       const double x1, const double y1, 
+			       const double x2, const double y2)
+	{
+	    double tri_area;
+	    tri_area = 0.5*fabs(c1*y1 - c2*x1 + x1*y2 - y1*x2 + x2*c2 - c1*y2);
+	    return tri_area;
+	}
+
+    double get_ell_sector_area(const Ellipse &ellipse, 
+			       const double theta1,
+			       const double theta2)
+	{
+	    double ell_area;
+	    ell_area = 0.5*ellipse.a*ellipse.b*fabs(theta1 - theta2);
+	    return ell_area;
+	}
+
 };
+
 
 #endif //GEOMETRY
