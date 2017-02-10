@@ -17,7 +17,7 @@
 class Engine
 {
     double eta = 1.0;
-    double dt = 0.2;
+    double dt = 0.01;
 
 public:    
     int run(Geometry &geometry, Force &force)
@@ -26,19 +26,26 @@ public:
 	    //int istep = 100;
 	    {
 		std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
+		//for ( int jstep=0; jstep<10; jstep++ )
+		//{
 		force.update_force_field(geometry);
-		force.output_force_filed(geometry, std::to_string(istep));
+		//force.output_force_filed(geometry, std::to_string(istep));
 		one_step_solution_modify(geometry, force);
-		if ( istep % 10 == 0)
+		//}
+		force.output_force_filed(geometry, std::to_string(istep));
+
+		//if ( istep % 10 == 0)
+		if ( istep == 200)
 		{
-		    //cell_division(geometry, force);
+		    cell_division(geometry, force);
 		}
 		geometry.apply_boundary_condition_voronoi();
+
 		//geometry.output_ellipse_list(std::to_string(istep));
-		geometry.output_ellipse_list(std::to_string(100));
+		//geometry.output_ellipse_list(std::to_string(100));
 		//getchar();
 		geometry.update_ellipse_list();
-		geometry.write_ellipse_tofile();
+		//geometry.write_ellipse_tofile();
 
 		std::cout << "istep: " << istep << 
 		    "ellipse num: " << geometry.ellipse_list.size() << "\n";
@@ -47,8 +54,10 @@ public:
 		//std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
 		//geometry.write_ellipse_tofile();
 		geometry.ellipse_to_voronoi();
+		geometry.output_cell_list(std::to_string(istep));
 		geometry.update_map();
 	    }
+	    geometry.output_cell_position();
 	    return 0;
 	}
 
@@ -66,16 +75,19 @@ public:
 		}
 	    }
 	    std::cout << div_index << "\n";
+	    // ***************
+	    div_index = 100;
+	    // ***************
 	    //getchar();
 	    double div_angle = 0.0;
 	    VoronoiCell new_cell = geometry.voronoi_cell_list[div_index];
 	    Ellipse new_ellipse = geometry.voronoi_cell_list[div_index].ellipse;
 	    double origin_c1 = new_ellipse.c1;
 	    double origin_c2 = new_ellipse.c2;
-	    new_ellipse.c1 = origin_c1 + 0.5; 
-	    new_ellipse.c2 = origin_c2;
-	    geometry.voronoi_cell_list[div_index].ellipse.c1 = origin_c1 - 0.5;
-	    geometry.voronoi_cell_list[div_index].ellipse.c2 = origin_c2;
+	    new_ellipse.c1 = origin_c1 + 1.0; 
+	    new_ellipse.c2 = origin_c2;// + 0.5;
+	    geometry.voronoi_cell_list[div_index].ellipse.c1 = origin_c1 - 1.0;
+	    geometry.voronoi_cell_list[div_index].ellipse.c2 = origin_c2;// - 0.5;
 	    new_cell.c1 = new_ellipse.c1;
 	    new_cell.c2 = new_ellipse.c2;
 	    geometry.voronoi_cell_list[div_index].c1 = geometry.voronoi_cell_list[div_index].ellipse.c1;
@@ -91,6 +103,13 @@ public:
 
     int one_step_solution_modify(Geometry &geometry, Force &force)
 	{
+	    std::ofstream foutput("out/eigen.txt");
+	    if(!foutput) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
 	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
 	    {
 	    	//geometry.output_cell(geometry.voronoi_cell_list[k]);
@@ -105,6 +124,12 @@ public:
 		    double b = geometry.voronoi_cell_list[k].ellipse.b;
 		    double sum_force_x = 0.0;
 		    double sum_force_y = 0.0;
+		    double sigma11 = 0.0;
+		    double sigma12 = 0.0;
+		    double sigma21 = 0.0;
+		    double sigma22 = 0.0;
+		    double oxi = geometry.voronoi_cell_list[k].ellipse.c1;
+		    double oyi = geometry.voronoi_cell_list[k].ellipse.c2;
 		    for ( int kk=0; kk<geometry.voronoi_cell_list[k].neighbor_id.size(); kk++ )
 		    {
 			int edge_id = geometry.voronoi_cell_list[k].edge_set[kk];
@@ -112,8 +137,6 @@ public:
 			double eta_hat = eta*geometry.voronoi_edge_list[edge_id].length/dt;
 			double cx = geometry.voronoi_edge_list[edge_id].c1;
 			double cy = geometry.voronoi_edge_list[edge_id].c2;
-			double oxi = geometry.voronoi_cell_list[k].ellipse.c1;
-			double oyi = geometry.voronoi_cell_list[k].ellipse.c2;
 			double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
 			double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
 			double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
@@ -121,13 +144,59 @@ public:
 			    force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
 			sum_force_y = sum_force_y + 
 			    force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
+			sigma11 = sigma11 + force.force_list[edge_id]*cos(theta)*cos(theta);
+			sigma12 = sigma12 + force.force_list[edge_id]*cos(theta)*sin(theta);
+			sigma21 = sigma21 + force.force_list[edge_id]*sin(theta)*cos(theta);
+			sigma22 = sigma22 + force.force_list[edge_id]*sin(theta)*sin(theta);
 		    }
 		    geometry.voronoi_cell_list[k].ellipse.c1 = 
 			geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
 		    geometry.voronoi_cell_list[k].ellipse.c2 = 
 			geometry.voronoi_cell_list[k].ellipse.c2 + sum_force_y*dt;
+		    double trace = sigma11 + sigma22;
+		    double det = sigma11*sigma22 - sigma12*sigma21;
+		    double lambda1 = 0.5*trace + sqrt(0.25*trace*trace - det);
+		    double lambda2 = 0.5*trace - sqrt(0.25*trace*trace - det);
+		    double v1, v2;
+		    double u1, u2;
+		    if ( sigma12 !=0 )
+		    {
+			v1 = lambda1 - sigma22;
+			v2 = sigma12;
+			u1 = lambda2 - sigma22;
+			u2 = sigma12;
+		    }
+		    else
+		    {
+			v1 = 1;
+			v2 = 0;
+			u1 = 0;
+			u2 = 1;
+		    }
+		    temp = sqrt(v1*v1 + v2*v2);
+		    v1 = v1/temp;
+		    v2 = v2/temp;
+		    temp = sqrt(u1*u1 + u2*u2);
+		    u1 = u1/temp;
+		    u2 = u2/temp;
+		    // geometry.voronoi_cell_list[k].ellipse.c1 = 
+		    // 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
+		    
+		    // std::cout << "sigma: " << sigma11 << ", " << sigma12 << ", " << sigma22 << "\n";
+		    // std::cout << "lambda: " << lambda1 << ", " << lambda2 << "\n";
+		    // std::cout << "v: " << v1 << ", " << v2 << "\n";
+		    // std::cout << "u: " << u1 << ", " << u2 << "\n";
+		    // getchar();
+
+		    foutput << geometry.voronoi_cell_list[k].cell_id << ", " 
+			    << oxi << ", " << oyi << ", " 
+			    << lambda1 << ", " << lambda2 << ", " 
+			    << oxi+lambda1*v1 << ", " << oyi+lambda1*v2 << ", " 
+			    << oxi+lambda2*u1 << ", " << oyi+lambda2*u2 << "\n";
 		}
 	    }
+	    foutput.close();
+	    return 0;
 	}
 
     // int one_step_solution(Geometry &geometry, Force &force)

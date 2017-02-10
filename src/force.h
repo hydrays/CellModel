@@ -18,7 +18,7 @@ class Force
 public:
     std::vector<double> force_list;
     std::vector<double> pressure_list;
-    double para_c = 2.0;
+    double para_c = 0.2;
 
 public:    
     int update_force_field(Geometry &geometry)
@@ -118,10 +118,15 @@ public:
 			double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
 			double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
 			double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
-			foutput << geometry.voronoi_cell_list[k].cell_id << ", " << oxi << ", " << oyi << ", " 
-				<< oxi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+			// foutput << geometry.voronoi_cell_list[k].cell_id << ", " << oxi << ", " << oyi << ", " 
+			// 	<< oxi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+			// 	<< ", "
+			// 	<< oyi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+			// 	<< ", " << force_list[edge_id] << "\n";
+			foutput << geometry.voronoi_cell_list[k].cell_id << ", " << cx << ", " << cy << ", " 
+				<< cx + 20.0*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
 				<< ", "
-				<< oyi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< cy + 20*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 				<< ", " << force_list[edge_id] << "\n";
 			sum_force_x = sum_force_x + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
 			sum_force_y = sum_force_y + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
@@ -138,6 +143,50 @@ public:
 	    foutput2.close();
 	    return 0;
 	}
+
+    int output_cell_force_status(Geometry &geometry, std::string file_index)
+	{
+	    std::ofstream foutput("out/cell_force_status" + file_index + ".txt");
+	    if(!foutput) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
+	    {
+		if ( geometry.voronoi_cell_list[k].cell_id < 8000)
+		{
+		    double temp = sqrt(6.0*PI/sqrt(3));
+		    double radius = sqrt(geometry.voronoi_cell_list[k].area/PI);
+		    double a = geometry.voronoi_cell_list[k].ellipse.a;
+		    double b = geometry.voronoi_cell_list[k].ellipse.b;
+		    double sum_force_x = 0.0;
+		    double sum_force_y = 0.0;
+		    double oxi = geometry.voronoi_cell_list[k].ellipse.c1;
+		    double oyi = geometry.voronoi_cell_list[k].ellipse.c2;
+		    for ( int kk=0; kk<geometry.voronoi_cell_list[k].neighbor_id.size(); kk++ )
+		    {
+			int edge_id = geometry.voronoi_cell_list[k].edge_set[kk];
+			int jcell_id = geometry.map_cell_id[geometry.voronoi_cell_list[k].neighbor_id[kk]];
+			double cx = geometry.voronoi_edge_list[edge_id].c1;
+			double cy = geometry.voronoi_edge_list[edge_id].c2;
+			double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
+			double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
+			double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
+			foutput << geometry.voronoi_cell_list[k].cell_id << ", " << oxi << ", " << oyi << ", " 
+				<< oxi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+				<< ", "
+				<< oyi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< ", " << force_list[edge_id] << "\n";
+			sum_force_x = sum_force_x + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
+			sum_force_y = sum_force_y + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
+		    }
+		}
+	    }
+	    foutput.close();
+	    return 0;
+	}
+
 };
 
 

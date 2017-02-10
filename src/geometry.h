@@ -43,10 +43,10 @@ struct BoundaryData
 	{
 	    L = L_value;
 	    H = H_value;
-	    int margin_n = 80;
-	    int margin_m = 80;
-	    int inner_n = 400;
-	    int inner_m = 400;
+	    int margin_n = 40;
+	    int margin_m = 40;
+	    int inner_n = 200;
+	    int inner_m = 200;
 	    n = inner_n + 2*margin_n;
 	    m = inner_m + 2*margin_m;
 	    res_x = 2.0*L/inner_m;
@@ -303,7 +303,8 @@ public:
 
     int init_ellipse_list()
 	{
-	    std::ifstream finit("initPos.txt");
+	    //std::ifstream finit("initPos.txt");
+	    std::ifstream finit("cellPos.txt");
 	    if(!finit) 
 	    {
 		std::cout << "file open error.\n";
@@ -312,7 +313,9 @@ public:
 	    
 	    int id = 0;
 	    double cx, cy;
-	    while (finit >> cx >>  cy)
+	    //std::string temp_str;
+	    char temp_str;
+	    while (finit >> cx >> temp_str >>  cy)
 	    {
 		id = id + 1;
 		//if ( id != 110 && id != 88 )
@@ -320,13 +323,13 @@ public:
 		    double v1 = 1.0;
 		    double v2 = 0.0;
 		    double u1 = 0.0;
-		    double u2 = 0.5;
+		    double u2 = 1.0;
 		    //double a = sqrt(v1*v1 + v2*v2);
 		    //double b = sqrt(u1*u1 + u2*u2);
 		    //std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
 		    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 		    ellipse.area = PI*ellipse.a*ellipse.b;
-		    ellipse.theta0 = 0.0;
+		    ellipse.theta0 = PI/2.0;
 		    ellipse_list.push_back(ellipse);
 		}
 	    }
@@ -393,11 +396,11 @@ public:
 	    make_edge_list(); // must after "make_voronoi_cell_list"
 	    refine_cell_list();
 
-	    write_ellipse_tofile();
+	    //write_ellipse_tofile();
 	    //output_node_list();
 	    //output_edge_list();
-	    output_cell_list();
-	    output_partition_table(n, m, partition_table, node_list);
+	    //output_cell_list();
+	    //output_partition_table(n, m, partition_table, node_list);
 
 	    delete(distance_table);
 	    delete(partition_table);
@@ -641,11 +644,15 @@ public:
 		    // check consistency for area
 		    double sum_area1 = 0.0;
 		    double sum_area2 = 0.0;
+		    //std::cout << "ellipse part area ";
 		    for ( int kk=0; kk < it->edges.size(); kk++ )
 		    {
 			sum_area1 = sum_area1 + it->edges[kk].tri_sector_area;
 			sum_area2 = sum_area2 + it->edges[kk].ell_sector_area;
+			//std::cout << it->edges[kk].ell_sector_area << " ";
+			//std::cout << it->edges[kk].theta1 << " " << it->edges[kk].theta2 << " ";
 		    }
+		    //std::cout << "\n";
 		    if ( fabs(sum_area1 - it->area) > 0.001 )
 		    {
 			std::cout << "total area does not add up!\n";
@@ -924,7 +931,7 @@ public:
 		getchar();
 	    }
 
-	    double dist_up = 1.5*(dx+dy);
+	    double dist_up = 2.0*(dx+dy);
 	    double dist_low = 0.1*(dx+dy);
 
 	    std::vector<VoronoiNode> new_node_list;
@@ -1264,6 +1271,28 @@ public:
 	    return 0;
 	}
 
+    int output_cell_position()
+	{
+	    std::ofstream fout("out/cellPos.txt");
+	    if(!fout) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
+	    for ( int k=0; k<voronoi_cell_list.size(); k++)
+	    {
+		if ( voronoi_cell_list[k].cell_id < 8000 )
+		{
+		    fout << voronoi_cell_list[k].ellipse.c1 << "," << 
+			voronoi_cell_list[k].ellipse.c2 << "\n";
+		}
+	    }
+
+	    fout.close();
+	    return 0;
+	}
+
     int write_ellipse_tofile()
 	{
 	    std::ofstream fellipse("out/ellipses.txt");
@@ -1414,11 +1443,10 @@ public:
 	    return 0;
 	}
 
-    int output_cell_list()
+    int output_cell_list(std::string file_index)
 	{
-	    // output nodes
-	    std::ofstream fnode("out/cell_nodes.txt");
-	    std::ofstream fedge("out/cell_edges.txt");
+	    std::ofstream fnode("out/cell_nodes" + file_index + ".txt");
+	    std::ofstream fedge("out/cell_edges" + file_index + ".txt");
 	    if(!fnode || !fedge) 
 	    {
 		std::cout << "file open error.\n";
@@ -1736,7 +1764,15 @@ public:
 			       const double theta2)
 	{
 	    double ell_area;
-	    ell_area = 0.5*ellipse.a*ellipse.b*fabs(theta1 - theta2);
+	    double new_theta1 = atan2(ellipse.a*sin(theta1), ellipse.b*cos(theta1));
+	    double new_theta2 = atan2(ellipse.a*sin(theta2), ellipse.b*cos(theta2));
+	    if ( theta2 > PI )
+	    {
+		new_theta2 = new_theta2 + 2*PI;
+	    }
+	    //std::cout << "theta1 " << theta1 << "new theta1 " << new_theta1 << "\n";
+	    //std::cout << "theta2 " << theta2 << "new theta2 " << new_theta2 << "\n";
+	    ell_area = 0.5*ellipse.a*ellipse.b*fabs(new_theta1 - new_theta2);
 	    return ell_area;
 	}
 
