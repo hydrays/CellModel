@@ -43,10 +43,10 @@ struct BoundaryData
 	{
 	    L = L_value;
 	    H = H_value;
-	    int margin_n = 40;
-	    int margin_m = 40;
-	    int inner_n = 200;
-	    int inner_m = 200;
+	    int margin_n = 80;
+	    int margin_m = 80;
+	    int inner_n = 400;
+	    int inner_m = 400;
 	    n = inner_n + 2*margin_n;
 	    m = inner_m + 2*margin_m;
 	    res_x = 2.0*L/inner_m;
@@ -320,7 +320,7 @@ public:
 		id = id + 1;
 		//if ( id != 110 && id != 88 )
 		{
-		    double v1 = 1.0;
+		    double v1 = 1.56;
 		    double v2 = 0.0;
 		    double u1 = 0.0;
 		    double u2 = 1.0;
@@ -329,7 +329,7 @@ public:
 		    //std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
 		    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 		    ellipse.area = PI*ellipse.a*ellipse.b;
-		    ellipse.theta0 = PI/2.0;
+		    ellipse.theta0 = 0.0;
 		    ellipse_list.push_back(ellipse);
 		}
 	    }
@@ -381,7 +381,9 @@ public:
 	    partition_table = (int *)malloc(n*m*sizeof(int));
 
 	    init_distance_table(ellipse_list, partition_table, distance_table);
+	    //output_partition_table(n, m, distance_table, partition_table, node_list);
 	    distance_mapping(partition_table, distance_table);
+	    //output_partition_table(n, m, distance_table, partition_table, node_list);
 
 	    //find_nodes(partition_table, node_list, raw_node_list, node_color_set);
 
@@ -400,87 +402,107 @@ public:
 	    //output_node_list();
 	    //output_edge_list();
 	    //output_cell_list();
-	    //output_partition_table(n, m, partition_table, node_list);
 
 	    delete(distance_table);
 	    delete(partition_table);
 	    return 0;
 	}
 
-    int voronoi_to_ellipse()
+    Ellipse voronoi_to_ellipse(VoronoiCell &cell)
 	{
-	    //std::vector<Ellipse> new_ellipse_list;
-	    new_ellipse_list.clear();
-	    for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
+	    Ellipse new_ellipse = cell.ellipse;
+	    double I1 = 0.0;
+	    double I2 = 0.0;
+	    double I3 = 0.0;
+	    double c1 = 0.0;
+	    double c2 = 0.0;
+	    for ( int kk=0; kk<cell.node_set.size(); kk++ )
 	    {
-		Ellipse new_ellipse = ellipse_list[k];
-		if ( voronoi_cell_list[k].node_set.size() > 3 )
+		c1 = c1 + voronoi_node_list[cell.node_set[kk]].x;
+		c2 = c2 + voronoi_node_list[cell.node_set[kk]].y;
+	    }
+	    c1 = c1/cell.node_set.size();
+	    c2 = c2/cell.node_set.size();
+
+	    for ( int kk=1; kk<cell.node_set.size(); kk++ )
+	    {
+		double x1 = voronoi_node_list[cell.node_set[kk-1]].x - c1;
+		double y1 = voronoi_node_list[cell.node_set[kk-1]].y - c2;
+		double x2 = voronoi_node_list[cell.node_set[kk]].x - c1;
+		double y2 = voronoi_node_list[cell.node_set[kk]].y - c2;
+		I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
+		I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
+					  x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
+		I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
+		//std::cout << x1 << ", " << y1 << ", ";
+	    }		
+	    int kk = cell.node_set.size()-1;
+	    double x1 = voronoi_node_list[cell.node_set[kk]].x - c1;
+	    double y1 = voronoi_node_list[cell.node_set[kk]].y - c2;
+	    double x2 = voronoi_node_list[cell.node_set[0]].x - c1;
+	    double y2 = voronoi_node_list[cell.node_set[0]].y - c2;
+	    I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
+	    I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
+				      x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
+	    I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
+	    double lambda1 = (I1 + I3 + sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
+	    double lambda2 = (I1 + I3 - sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
+	    // note that the order is different
+	    double u1 = lambda1 - I3;
+	    double u2 = I2;
+	    double v1 = lambda2 - I3;
+	    double v2 = I2;
+	    if ( I2 == 0.0 )
+	    {
+		if ( lambda1 == I1 )
 		{
-		    double I1 = 0.0;
-		    double I2 = 0.0;
-		    double I3 = 0.0;
-		    double c1 = 0.0;
-		    double c2 = 0.0;
-		    for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++ )
-		    {
-			c1 = c1 + voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x;
-			c2 = c2 + voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y;
-		    }
-		    c1 = c1/voronoi_cell_list[k].node_set.size();
-		    c2 = c2/voronoi_cell_list[k].node_set.size();
-
-		    for ( int kk=1; kk<voronoi_cell_list[k].node_set.size(); kk++ )
-		    {
-			double x1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk-1]].x - c1;
-			double y1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk-1]].y - c2;
-			double x2 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x - c1;
-			double y2 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y - c2;
-			I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
-			I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
-						  x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
-			I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
-			std::cout << x1 << ", " << y1 << ", ";
-		    }		
-		    int kk = voronoi_cell_list[k].node_set.size()-1;
-		    double x1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x - c1;
-		    double y1 = voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y - c2;
-		    double x2 = voronoi_node_list[voronoi_cell_list[k].node_set[0]].x - c1;
-		    double y2 = voronoi_node_list[voronoi_cell_list[k].node_set[0]].y - c2;
-		    I1 = I1 + (-(x2-x1)/12.0)*(y2*y2*y2 + y2*y2*y1 + y2*y1*y1 + y1*y1*y1);
-		    I2 = I2 + ((x2-x1)/24.0)*(x1*(3.0*y1*y1 + 2.0*y1*y2 + y2*y2) + 
-					      x2*(3.0*y2*y2 + 2.0*y1*y2 + y1*y1));
-		    I3 = I3 + ((y2-y1)/12.0)*(x2*x2*x2 + x2*x2*x1 + x2*x1*x1 + x1*x1*x1); 
-		    std::cout << x1 << ", " << y1 << "\n";
-		    double lambda1 = (I1 + I3 + sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
-		    double lambda2 = (I1 + I3 - sqrt(I1*I1 + I3*I3 + 4.0*I2*I2 - 2.0*I1*I3))/2.0;
-		    double v1 = lambda1 - I3;
-		    double v2 = I2;
-		    double u1 = lambda2 - I3;
-		    double u2 = I2;
-		    new_ellipse.c1 = c1;
-		    new_ellipse.c2 = c2;
-		    new_ellipse.v1 = v1;
-		    new_ellipse.v2 = v2;
-		    new_ellipse.u1 = u1;
-		    new_ellipse.u2 = u2;
-		    new_ellipse.a = lambda1;
-		    new_ellipse.b = lambda2;
-
-		    std::cout << "ellipse " << k << ":[" << I1 << " " <<
-			I2 << " " << I3 << "]\n";
+		    u1 = 1.0;
+		    u2 = 0.0;
+		    v1 = 0.0;
+		    v2 = 1.0;
+		}
+		else if ( lambda2 == I1 )
+		{
+		    u1 = 0.0;
+		    u2 = 1.0;
+		    v1 = 1.0;
+		    v2 = 0.0;
 		}
 		else
 		{
-		    new_ellipse.v1 = 0.0;
-		    new_ellipse.v2 = 0.0;
-		    new_ellipse.u1 = 0.0;
-		    new_ellipse.u2 = 0.0;
-		    new_ellipse.a = 0.0;
-		    new_ellipse.b = 0.0;
+		    std::cout << "wrong eigenvalue\n";
+		    getchar();
 		}
-		new_ellipse_list.push_back(new_ellipse);
+	    } 
+	    if ( lambda1 <= 0 || lambda2 <= 0 )
+	    {
+		std::cout << "something wrong with ellipse \n";
+		getchar();
 	    }
-	    return 0;
+	    double ratio_temp = lambda1 / lambda2;
+	    double multi_temp = new_ellipse.a * new_ellipse.b;
+	    // if ( ratio_temp > 2.0 )
+	    // {
+	    // 	ratio_temp = 2.0;
+	    // }
+	    // if ( ratio_temp < 1.0 )
+	    // {
+	    // 	ratio_temp = 1.0;
+	    // }
+
+	    lambda1 = sqrt(multi_temp*ratio_temp);
+	    lambda2 = sqrt(multi_temp/ratio_temp);
+	    // new_ellipse.c1 = c1;
+	    // new_ellipse.c2 = c2;
+	    new_ellipse.a = 1.0/sqrt(lambda2);
+	    new_ellipse.b = 1.0/sqrt(lambda1);
+	    new_ellipse.v1 = v1/sqrt(v1*v1 + v2*v2);
+	    new_ellipse.v2 = v2/sqrt(v1*v1 + v2*v2);
+	    new_ellipse.u1 = u1/sqrt(u1*u1 + u2*u2);
+	    new_ellipse.u2 = u2/sqrt(u1*u1 + u2*u2);
+
+	    //std::cout << cell.cell_id << ", " << lambda1 << ", " << lambda2 << "\n";
+	    return new_ellipse;
 	}
 
     int refine_cell_list()
@@ -653,14 +675,14 @@ public:
 			//std::cout << it->edges[kk].theta1 << " " << it->edges[kk].theta2 << " ";
 		    }
 		    //std::cout << "\n";
-		    if ( fabs(sum_area1 - it->area) > 0.001 )
+		    if ( fabs(sum_area1 - it->area)/it->area > 0.25 )
 		    {
 			std::cout << "total area does not add up!\n";
 			std::cout << "total area: " << it->area
 				  << "sumed area: " << sum_area1 << "\n";
 			getchar();
 		    }
-		    if ( fabs(sum_area2 - it->ellipse.area) > 0.001 )
+		    if ( fabs(sum_area2 - it->ellipse.area)/it->ellipse.area > 0.25 )
 		    {
 			std::cout << "ellipse area does not add up!\n";
 			std::cout << "ellipse area: " << it->ellipse.area
@@ -1243,6 +1265,7 @@ public:
 		if ( voronoi_cell_list[k].cell_id < 8000 )
 		{
 		    ellipse_list.push_back(voronoi_cell_list[k].ellipse);
+		    //ellipse_list.push_back(voronoi_to_ellipse(voronoi_cell_list[k]));
 		}
 	    }
 	    return 0;
@@ -1261,9 +1284,19 @@ public:
 	    {
 		if ( voronoi_cell_list[k].cell_id < 8000 )
 		{
+		    Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
+		    double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
 		    fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
-			voronoi_cell_list[k].ellipse.c1 << "," << 
-			voronoi_cell_list[k].ellipse.c2 << "\n";
+			voronoi_cell_list[k].ellipse.c1 << ", " << 
+			voronoi_cell_list[k].ellipse.c2 << ", " << 
+			voronoi_cell_list[k].ellipse.a << ", " << 
+			voronoi_cell_list[k].ellipse.b << ", " << 
+			converted_ellipse.a << ", " << 
+			converted_ellipse.b << ", " << 
+			converted_ellipse.v1 << ", " << 
+			converted_ellipse.v2 << ", " << 
+			voronoi_cell_list[k].ellipse.c1 + aspect_ratio*converted_ellipse.v1 << ", " << 
+			voronoi_cell_list[k].ellipse.c2 + aspect_ratio*converted_ellipse.v2 << "\n";
 		}
 	    }
 
@@ -1346,11 +1379,13 @@ public:
 	}
 
     int output_partition_table(const int n, const int m, 
+			       const int* distance_table, 
 			       const int* partition_table, 
 			       const std::vector<PixelNode> &node_list)
 	{
 	    std::ofstream fout("out/partition_table.txt");
-	    if(!fout) 
+	    std::ofstream fout2("out/distance_table.txt");
+	    if(!fout || !fout2) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
@@ -1372,6 +1407,7 @@ public:
 		{
 		    bool found_flag;
 		    found_flag = false;
+		    fout2 << distance_table[i*m+j] << ",";
 		    for ( int k=0; k<node_list.size(); k++ )
 		    {
 			if ( node_list[k].irow == i && node_list[k].icol == j )
@@ -1387,9 +1423,11 @@ public:
 		    }
 		}
 		fout << "\n";
+		fout2 << "\n";
 	    }
 
 	    fout.close();
+	    fout2.close();
 	    return 0;
 	}
 
@@ -1447,44 +1485,46 @@ public:
 	{
 	    std::ofstream fnode("out/cell_nodes" + file_index + ".txt");
 	    std::ofstream fedge("out/cell_edges" + file_index + ".txt");
-	    if(!fnode || !fedge) 
+	    std::ofstream farea("out/cell_area" + file_index + ".txt");
+	    if(!fnode || !fedge || !farea) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
 
-	    // output edges
 	    for ( int k=0; k<voronoi_cell_list.size(); k++)
 	    {
-		std::cout << "Cell " << voronoi_cell_list[k].cell_id << "\n node_set: ";
-		for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++)
-		{
-		    std::cout << voronoi_cell_list[k].node_set[kk] << "(" <<
-			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x << ", " <<
-			voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y << ") ";
-		}
-		std::cout << "\n edge_set: \n";		
-		for ( int kk=0; kk<voronoi_cell_list[k].edge_set.size(); kk++)
-		{
-		    std::cout << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].edge_id 
-			      << "( node1: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id1
-			      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x1 
-			      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y1
-			      << ") - node2: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id2
-			      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x2
-			      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y2
-			      << ") )\n";
-		}
-		std::cout << "\n area: " << voronoi_cell_list[k].area;
-		std::cout << "\n neighbor_id: ";		
-		for ( int kk=0; kk<voronoi_cell_list[k].neighbor_id.size(); kk++)
-		{
-		    std::cout << voronoi_cell_list[k].neighbor_id[kk] << " ";
-		}
-		std::cout << "\n";		
-		std::vector<int> node_set = voronoi_cell_list[k].node_set;
-		std::vector<int> edge_set = voronoi_cell_list[k].edge_set;
+		// std::cout << "Cell " << voronoi_cell_list[k].cell_id << "\n node_set: ";
+		// for ( int kk=0; kk<voronoi_cell_list[k].node_set.size(); kk++)
+		// {
+		//     std::cout << voronoi_cell_list[k].node_set[kk] << "(" <<
+		// 	voronoi_node_list[voronoi_cell_list[k].node_set[kk]].x << ", " <<
+		// 	voronoi_node_list[voronoi_cell_list[k].node_set[kk]].y << ") ";
+		// }
+		// std::cout << "\n edge_set: \n";		
+		// for ( int kk=0; kk<voronoi_cell_list[k].edge_set.size(); kk++)
+		// {
+		//     std::cout << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].edge_id 
+		// 	      << "( node1: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id1
+		// 	      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x1 
+		// 	      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y1
+		// 	      << ") - node2: " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].node_id2
+		// 	      << "(" << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].x2
+		// 	      << ", " << voronoi_edge_list[voronoi_cell_list[k].edge_set[kk]].y2
+		// 	      << ") )\n";
+		// }
+		// std::cout << "\n area: " << voronoi_cell_list[k].area;
+		// std::cout << "\n neighbor_id: ";		
+		// for ( int kk=0; kk<voronoi_cell_list[k].neighbor_id.size(); kk++)
+		// {
+		//     std::cout << voronoi_cell_list[k].neighbor_id[kk] << " ";
+		// }
+		// std::cout << "\n";		
 
+    		VoronoiCell cell = voronoi_cell_list[k];
+		std::vector<int> node_set = cell.node_set;
+		std::vector<int> edge_set = cell.edge_set;
+		
 		for ( int kk=0; kk<node_set.size(); kk++)
 		{
 		    fnode << node_set[kk] << ", " <<
@@ -1503,9 +1543,19 @@ public:
 			voronoi_edge_list[edge_set[kk]].x2 << ", " <<
 			voronoi_edge_list[edge_set[kk]].y2 << "\n";
 		}
+		
+		farea << cell.cell_id << " ";  
+		for ( int kk=0; kk<edge_set.size(); kk++)
+		{
+		    farea << cell.edges[kk].tri_sector_area/cell.area 
+			  << " " << cell.edges[kk].ell_sector_area/cell.ellipse.area << " ";
+		}
+		farea << "\n";
+
 	    }
 	    fnode.close();
 	    fedge.close();
+	    farea.close();
 	    return 0;
 	}
 

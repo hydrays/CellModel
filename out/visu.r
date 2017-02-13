@@ -6,6 +6,8 @@ ellipses <- read.csv(file="ellipses100.txt", header=FALSE)
 old_ellipses <- read.csv(file="cellPos.txt", header=FALSE)
 eigenshape <- read.csv(file="eigen.txt", header=FALSE)
 partition_table <- as.matrix(read.csv(file="partition_table.txt", header=FALSE))
+distance_table <- as.matrix(read.csv(file="distance_table.txt", header=FALSE))
+
 ## plot(0, 0, type='n', xlim=c(-20, 20), ylim=c(-15, 15), asp=1)
 ## #plot(0, 0, type='n', xlim=c(-14, -8), ylim=c(-1, 5), asp=1)
 ## points(nodes[, 2:3])
