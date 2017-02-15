@@ -172,7 +172,9 @@ public:
 
     int init()
 	{
-	    boundary_data.set_boundary_data(15.0, 10.0);
+	    //boundary_data.set_boundary_data(18.0, 11.9);
+	    boundary_data.set_boundary_data(20.0, 13.0);
+	    //boundary_data.set_boundary_data(15.0, 10.0);
 	    //boundary_data.set_boundary_data(36.0, 36.0);
 
 	    init_ellipse_list();
@@ -320,7 +322,7 @@ public:
 		id = id + 1;
 		//if ( id != 110 && id != 88 )
 		{
-		    double v1 = 1.56;
+		    double v1 = 1.5;
 		    double v2 = 0.0;
 		    double u1 = 0.0;
 		    double u2 = 1.0;
@@ -454,14 +456,14 @@ public:
 	    double v2 = I2;
 	    if ( I2 == 0.0 )
 	    {
-		if ( lambda1 == I1 )
+		if ( fabs(lambda1 - I1) < 0.00001 )
 		{
 		    u1 = 1.0;
 		    u2 = 0.0;
 		    v1 = 0.0;
 		    v2 = 1.0;
 		}
-		else if ( lambda2 == I1 )
+		else if ( fabs(lambda2 - I1) < 0.00001 )
 		{
 		    u1 = 0.0;
 		    u2 = 1.0;
@@ -471,6 +473,7 @@ public:
 		else
 		{
 		    std::cout << "wrong eigenvalue\n";
+		    std::cout << lambda1 << " " << lambda2 << " " << I1 << " " << I3 << "\n";
 		    getchar();
 		}
 	    } 
@@ -1561,7 +1564,8 @@ public:
 
     int output_cell(VoronoiCell &cell)
 	{
-	    std::cout << "Cell " << cell.cell_id << "\n node_set: ";
+	    std::cout << "Cell " << cell.cell_id
+		      << " " << cell.c1 << " " << cell.c2 << "\n node_set: ";
 	    for ( int kk=0; kk<cell.node_set.size(); kk++)
 	    {
 		std::cout << cell.node_set[kk] << "(" <<

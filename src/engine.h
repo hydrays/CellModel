@@ -12,20 +12,44 @@
 #include <iomanip>
 #include "ellipse.h"
 #include "geometry.h"
+#include <time.h>
 //#include "SuiteSparseQR.hpp"
+
+struct DivInfo
+{
+    double x;
+    double y;
+    int type;
+    double ratio;
+};
 
 class Engine
 {
     double eta = 1.0;
-    double dt = 0.02;
-    double q0 = 1.6;
+    double dt = 0.2;
+    double q0 = 1.56;
     double scaling_beta1 = 0.5;
-    double scaling_beta2 = 1.0;
-
+    double scaling_beta2 = 0.05;
+    double A1 = 1.0;
+    double A2 = 0.1;
+    double F_factor = 0.0;
+    double p0 = 0.63;
+    int div_counter;
+	
 public:    
     int run(Geometry &geometry, Force &force)
 	{
-	    for ( int istep=100; istep<1200; istep++ )
+	    std::ofstream foutput("out/statistics.txt");
+	    if(!foutput) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
+
+	    srand (time(NULL));
+	    div_counter = 0;
+	    F_factor = 0.0;
+	    for ( int istep=100; istep<1600; istep++ )
 	    //int istep = 100;
 	    {
 		std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
@@ -41,9 +65,30 @@ public:
 
 		if ( istep % 10 == 0)
 		//if ( istep == 110)
+		//if ( 0 )
 		{
-		    cell_division(geometry, force);
+		    DivInfo div_info = cell_division(geometry, force);
+		    div_counter = div_counter + 1;
+		    if ( div_info.type==1 )
+		    {
+			F_factor = F_factor + p0;
+		    }
+		    else
+		    {
+			F_factor = F_factor - (1-p0);
+		    }
+			
+		    foutput << div_counter << ", "
+			    << geometry.boundary_data.L << ", "
+			    << geometry.boundary_data.H << ", "
+			    << div_info.x << ", "
+			    << div_info.y << ", "
+			    << div_info.type << ", "
+			    << F_factor << ", "
+			    << div_info.ratio << "\n";
+		    foutput.flush();
 		}
+		
 		geometry.apply_boundary_condition_voronoi();
 
 		//getchar();
@@ -66,13 +111,17 @@ public:
 		geometry.update_map();
 	    }
 	    geometry.output_cell_position();
+
+	    foutput.close();
 	    return 0;
 	}
 
-    int cell_division(Geometry &geometry, Force &force)
+    DivInfo cell_division(Geometry &geometry, Force &force)
 	{
 	    // divided cell
 	    int div_index;
+	    DivInfo div_info;
+	    
 	    while (true)
 	    {
 		div_index = rand() % geometry.voronoi_cell_list.size();
@@ -98,11 +147,15 @@ public:
 	    if ( dividing_ellipse.a / dividing_ellipse.b > q0 ) // fix
 	    {
 		dividing_angle = atan2(dividing_ellipse.v2, dividing_ellipse.v1);
+		div_info.type = 1;
 	    }
 	    else
 	    {
 		dividing_angle = fmod( double(rand() % 100000), PI );
+		div_info.type = 0;
 	    }
+	    div_info.x = origin_c1;
+	    div_info.y = origin_c2;
 	    new_ellipse.c1 = origin_c1 + 0.5*cos(dividing_angle); 
 	    new_ellipse.c2 = origin_c2 + 0.5*sin(dividing_angle); 
 	    geometry.voronoi_cell_list[div_index].ellipse.c1 = origin_c1 - 0.5*cos(dividing_angle);
@@ -117,8 +170,8 @@ public:
 		+ fabs(sin(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2));
 	    delta_L = fabs(sin(dividing_angle)*scaling_beta1/(scaling_beta1 + scaling_beta2))
 		+ fabs(cos(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2));
-	    delta_H = 0.25*delta_H / geometry.boundary_data.L;
-	    delta_L = 0.25*delta_L / geometry.boundary_data.H;
+	    delta_H = 4.0*0.25*delta_H / geometry.boundary_data.L;
+	    delta_L = 4.0*0.25*delta_L / geometry.boundary_data.H;
 	    geometry.boundary_data.set_boundary_data(geometry.boundary_data.L + delta_L, 
 						     geometry.boundary_data.H + delta_H);
 
@@ -129,6 +182,8 @@ public:
 	    new_cell.cell_id = new_ellipse.ellipse_id;
 	    geometry.voronoi_cell_list.push_back(new_cell);
 
+	    double ratio = 0.0;
+	    double total_counter = 0.0;
 	    // update cell positions
 	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
 	    {
@@ -136,16 +191,26 @@ public:
 		if ( geometry.voronoi_cell_list[k].cell_id < 8000)
 		//if (geometry.voronoi_cell_list[k].cell_id == 1)
 		{
+		    total_counter = total_counter + 1.0;
+		    Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
+		    if ( converted_ellipse.a / converted_ellipse.b > q0 )
+		    {
+			ratio = ratio + 1.0;
+		    }
 		    double x_coord = geometry.voronoi_cell_list[k].ellipse.c1 - origin_c1;
 		    double y_coord = geometry.voronoi_cell_list[k].ellipse.c2 - origin_c2;
 		    double x_coord1 = x_coord*cos(dividing_angle) + y_coord*sin(dividing_angle);
 		    double y_coord1 = -x_coord*sin(dividing_angle) + y_coord*cos(dividing_angle);
-		    double x_coord_new1 = x_coord1*( 1.0 + 
-						   exp( -( scaling_beta1*fabs(x_coord1) + 
-							   scaling_beta2*fabs(y_coord1) ) ) );
-		    double y_coord_new1 = y_coord1*(1.0 + 
-						  exp( -( scaling_beta1*fabs(x_coord1) + 
-							  scaling_beta2*fabs(y_coord1) ) ) );
+		    /* double x_coord_new1 = x_coord1*( 1.0 +  */
+		    /* 				     A1*exp( -( scaling_beta1*fabs(x_coord1) +  */
+		    /* 						scaling_beta2*fabs(y_coord1) ) ) ); */
+		    /* double y_coord_new1 = y_coord1*( 1.0 +  */
+		    /* 				     A2*exp( -( scaling_beta1*fabs(x_coord1) +  */
+		    /* 						scaling_beta2*fabs(y_coord1) ) ) ); */
+		    double x_coord_new1 = x_coord1*( 1.0 +
+		    				     exp( -( scaling_beta1*fabs(x_coord1) +
+		    						scaling_beta2*y_coord1*y_coord1 ) ) );
+		    double y_coord_new1 = y_coord1;
 		    double x_coord_new = x_coord_new1*cos(dividing_angle) - y_coord_new1*sin(dividing_angle);
 		    double y_coord_new = x_coord_new1*sin(dividing_angle) + y_coord_new1*cos(dividing_angle);
 		    geometry.voronoi_cell_list[k].ellipse.c1 = 
@@ -153,7 +218,9 @@ public:
 		    geometry.voronoi_cell_list[k].ellipse.c2 = 
 			geometry.voronoi_cell_list[k].ellipse.c2 + y_coord_new - y_coord;
 		}
-	    }	    
+	    }
+	    div_info.ratio = ratio / total_counter;
+	    return div_info;
 	}
 
     int one_step_solution_modify(Geometry &geometry, Force &force, std::string file_index)
