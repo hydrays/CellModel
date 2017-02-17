@@ -1,3 +1,4 @@
+
 #ifndef GEOMETRY
 #define GEOMETRY
 
@@ -173,7 +174,7 @@ public:
     int init()
 	{
 	    //boundary_data.set_boundary_data(18.0, 11.9);
-	    boundary_data.set_boundary_data(20.0, 13.0);
+	    boundary_data.set_boundary_data(20.0, 17.5);
 	    //boundary_data.set_boundary_data(15.0, 10.0);
 	    //boundary_data.set_boundary_data(36.0, 36.0);
 
@@ -511,7 +512,7 @@ public:
     int refine_cell_list()
 	{
 	    //for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
-	    std::cout << "refining \n";
+	    //std::cout << "refining \n";
 	    for ( std::vector<VoronoiCell>::iterator it=voronoi_cell_list.begin(); 
 		  it!=voronoi_cell_list.end(); )	    
 	    {
@@ -976,20 +977,20 @@ public:
 			    new_node_list[k].color_set.insert(*it_color);
 			}
 			found = 1;
-			std::cout << "remove nearby nodes and add colors\n";
-			std::cout << "old color_set \n";
-			for (std::unordered_set<int>::const_iterator it2 = it->color_set.begin();
-			     it2 != it->color_set.end(); it2++ )
-			{
-			    std::cout << *it2 << " ";
-			}
-			std::cout << "\n";
-			std::cout << "new color_set \n";
-			for (std::unordered_set<int>::const_iterator it3 = new_node_list[k].color_set.begin();
-			     it3 != new_node_list[k].color_set.end(); it3++ )
-			{
-			    std::cout << *it3 << " ";
-			}
+			//std::cout << "remove nearby nodes and add colors\n";
+			//std::cout << "old color_set \n";
+			/* for (std::unordered_set<int>::const_iterator it2 = it->color_set.begin(); */
+			/*      it2 != it->color_set.end(); it2++ ) */
+			/* { */
+			/*     std::cout << *it2 << " "; */
+			/* } */
+			//std::cout << "\n";
+			//std::cout << "new color_set \n";
+			/* for (std::unordered_set<int>::const_iterator it3 = new_node_list[k].color_set.begin(); */
+			/*      it3 != new_node_list[k].color_set.end(); it3++ ) */
+			/* { */
+			/*     std::cout << *it3 << " "; */
+			/* } */
 			//getchar();
 		    }
 		}
@@ -998,12 +999,12 @@ public:
 		    new_node_list.push_back(*it);
 		}
 	    }
-	    if (voronoi_node_list.size() != new_node_list.size() )
-	    {
-		std::cout << "old node list size: " << voronoi_node_list.size() << "\n";
-		std::cout << "new node list size: " << new_node_list.size() << "\n";
-		//getchar();
-	    }
+	    /* if (voronoi_node_list.size() != new_node_list.size() ) */
+	    /* { */
+	    /* 	std::cout << "old node list size: " << voronoi_node_list.size() << "\n"; */
+	    /* 	std::cout << "new node list size: " << new_node_list.size() << "\n"; */
+	    /* 	//getchar(); */
+	    /* } */
 	    voronoi_node_list = new_node_list;
 	    return 0;
 	}
@@ -1288,18 +1289,20 @@ public:
 		if ( voronoi_cell_list[k].cell_id < 8000 )
 		{
 		    Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
-		    double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
+		    //double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
+		    double aspect_ratio = voronoi_cell_list[k].ellipse.accumu_a /
+			voronoi_cell_list[k].ellipse.accumu_b;
 		    fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
 			voronoi_cell_list[k].ellipse.c1 << ", " << 
 			voronoi_cell_list[k].ellipse.c2 << ", " << 
-			voronoi_cell_list[k].ellipse.a << ", " << 
-			voronoi_cell_list[k].ellipse.b << ", " << 
+			voronoi_cell_list[k].ellipse.accumu_a << ", " << 
+			voronoi_cell_list[k].ellipse.accumu_b << ", " << 
 			converted_ellipse.a << ", " << 
 			converted_ellipse.b << ", " << 
 			converted_ellipse.v1 << ", " << 
 			converted_ellipse.v2 << ", " << 
-			voronoi_cell_list[k].ellipse.c1 + aspect_ratio*converted_ellipse.v1 << ", " << 
-			voronoi_cell_list[k].ellipse.c2 + aspect_ratio*converted_ellipse.v2 << "\n";
+			voronoi_cell_list[k].ellipse.c1 + aspect_ratio*voronoi_cell_list[k].ellipse.v1 << ", " <<
+		        voronoi_cell_list[k].ellipse.c2 + aspect_ratio*voronoi_cell_list[k].ellipse.v2 << "\n";
 		}
 	    }
 
@@ -1722,7 +1725,7 @@ public:
 		{
 		    is_done = 1;
 		}
-		std::cout << "distance " << filling_value << "\n";
+		//std::cout << "distance " << filling_value << "\n";
 	    }
 	    return 0;
 	}

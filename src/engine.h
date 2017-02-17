@@ -26,8 +26,10 @@ struct DivInfo
 class Engine
 {
     double eta = 1.0;
+    // ******
+    // !!!!!!
     double dt = 0.2;
-    double q0 = 1.56;
+    double q0 = 1.46;
     double scaling_beta1 = 0.5;
     double scaling_beta2 = 0.05;
     double A1 = 1.0;
@@ -35,308 +37,350 @@ class Engine
     double F_factor = 0.0;
     double p0 = 0.63;
     int div_counter;
-	
+    double omega = 0.2;
+    double mu = 0.25;
+    
 public:    
     int run(Geometry &geometry, Force &force)
+    {
+	std::ofstream foutput("out/statistics.txt");
+	if(!foutput) 
 	{
-	    std::ofstream foutput("out/statistics.txt");
-	    if(!foutput) 
-	    {
-		std::cout << "file open error.\n";
-		return -1; 
-	    }
+	    std::cout << "file open error.\n";
+	    return -1; 
+	}
 
-	    srand (time(NULL));
-	    div_counter = 0;
-	    F_factor = 0.0;
-	    for ( int istep=100; istep<1600; istep++ )
+	srand (time(NULL));
+	div_counter = 0;
+	F_factor = 0.0;
+
+	DivInfo div_info;
+	double ratio;
+
+	for ( int istep=100; istep<2000; istep++ )
 	    //int istep = 100;
-	    {
-		std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
-		//for ( int jstep=0; jstep<10; jstep++ )
-		//{
-		geometry.output_cell_list(std::to_string(istep));
-		geometry.output_ellipse_list(std::to_string(istep));
-		force.update_force_field(geometry);
-		force.output_force_filed(geometry, std::to_string(istep));
-		//force.output_force_filed(geometry, std::to_string(istep));
-		one_step_solution_modify(geometry, force, std::to_string(istep));
-		//}
+	{
+	    std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
+	    //for ( int jstep=0; jstep<10; jstep++ )
+	    //{
+	    geometry.output_cell_list(std::to_string(istep));
+	    geometry.output_ellipse_list(std::to_string(istep));
+	    force.update_force_field(geometry);
+	    force.output_force_filed(geometry, std::to_string(istep));
+	    //force.output_force_filed(geometry, std::to_string(istep));
+	    one_step_solution_modify(geometry, force, std::to_string(istep));
+	    //}
 
-		if ( istep % 10 == 0)
+	    if ( istep % 10 == 0)
 		//if ( istep == 110)
 		//if ( 0 )
+	    {
+		div_info = cell_division(geometry, force);
+		div_counter = div_counter + 1;
+		if ( div_info.type==1 )
 		{
-		    DivInfo div_info = cell_division(geometry, force);
-		    div_counter = div_counter + 1;
-		    if ( div_info.type==1 )
-		    {
-			F_factor = F_factor + p0;
-		    }
-		    else
-		    {
-			F_factor = F_factor - (1-p0);
-		    }
-			
-		    foutput << div_counter << ", "
-			    << geometry.boundary_data.L << ", "
-			    << geometry.boundary_data.H << ", "
-			    << div_info.x << ", "
-			    << div_info.y << ", "
-			    << div_info.type << ", "
-			    << F_factor << ", "
-			    << div_info.ratio << "\n";
-		    foutput.flush();
+		    F_factor = F_factor + p0;
 		}
-		
-		geometry.apply_boundary_condition_voronoi();
-
-		//getchar();
-		geometry.update_ellipse_list();
-
-		//geometry.output_ellipse_list(std::to_string(100));
-		//geometry.write_ellipse_tofile();
-
-		std::cout << "istep: " << istep << 
-		    "ellipse num: " << geometry.ellipse_list.size() << "\n";
-		//if ( geometry.ellipse_list.size() < 140 ) getchar();
-		//std::cout << "here_out2 \n";
-		geometry.apply_boundary_condition_ellipse();
-		//std::cout << "here_out3 \n";
-		//std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
-		//geometry.write_ellipse_tofile();
-		//std::cout << "here_out0 \n";
-		geometry.ellipse_to_voronoi();
-		//std::cout << "here_out1 \n";
-		geometry.update_map();
+		else
+		{
+		    F_factor = F_factor - (1-p0);
+		}
 	    }
-	    geometry.output_cell_position();
 
-	    foutput.close();
-	    return 0;
+	    ratio = update_shape(geometry, force);
+	    
+	    foutput << istep << ", " << div_counter << ", "
+		    << geometry.boundary_data.L << ", "
+		    << geometry.boundary_data.H << ", "
+		    << div_info.x << ", "
+		    << div_info.y << ", "
+		    << div_info.type << ", "
+		    << F_factor << ", "
+		    << ratio << "\n";
+	    foutput.flush();
+		
+	    geometry.apply_boundary_condition_voronoi();
+
+	    //getchar();
+	    geometry.update_ellipse_list();
+
+	    //geometry.output_ellipse_list(std::to_string(100));
+	    //geometry.write_ellipse_tofile();
+
+	    std::cout << "istep: " << istep << 
+		"ellipse num: " << geometry.ellipse_list.size() << "\n";
+	    //if ( geometry.ellipse_list.size() < 140 ) getchar();
+	    //std::cout << "here_out2 \n";
+	    geometry.apply_boundary_condition_ellipse();
+	    //std::cout << "here_out3 \n";
+	    //std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
+	    //geometry.write_ellipse_tofile();
+	    //std::cout << "here_out0 \n";
+	    geometry.ellipse_to_voronoi();
+	    //std::cout << "here_out1 \n";
+	    geometry.update_map();
 	}
+	geometry.output_cell_position();
+
+	foutput.close();
+	return 0;
+    }
 
     DivInfo cell_division(Geometry &geometry, Force &force)
+    {
+	// divided cell
+	int div_index;
+	DivInfo div_info;
+	    
+	while (true)
 	{
-	    // divided cell
-	    int div_index;
-	    DivInfo div_info;
-	    
-	    while (true)
+	    div_index = rand() % geometry.voronoi_cell_list.size();
+	    if ( geometry.voronoi_cell_list[div_index].cell_id < 8000 )
 	    {
-		div_index = rand() % geometry.voronoi_cell_list.size();
-		if ( geometry.voronoi_cell_list[div_index].cell_id < 8000 )
-		{
-		    std::cout << "dividing cell: " << div_index << "==";
-		    break;
-		}
+		std::cout << "dividing cell: " << div_index << "==";
+		break;
 	    }
-	    std::cout << div_index << "\n";
-	    // ***************
-	    //div_index = 100;
-	    // ***************
-	    //getchar();
-	    Ellipse dividing_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[div_index]);
-	    VoronoiCell new_cell = geometry.voronoi_cell_list[div_index];
-	    Ellipse new_ellipse = geometry.voronoi_cell_list[div_index].ellipse;
-	    double origin_c1 = new_ellipse.c1;
-	    double origin_c2 = new_ellipse.c2;
-	    double delta_H = 0.0;
-	    double delta_L = 0.0;
-	    double dividing_angle;
-	    if ( dividing_ellipse.a / dividing_ellipse.b > q0 ) // fix
-	    {
-		dividing_angle = atan2(dividing_ellipse.v2, dividing_ellipse.v1);
-		div_info.type = 1;
-	    }
-	    else
-	    {
-		dividing_angle = fmod( double(rand() % 100000), PI );
-		div_info.type = 0;
-	    }
-	    div_info.x = origin_c1;
-	    div_info.y = origin_c2;
-	    new_ellipse.c1 = origin_c1 + 0.5*cos(dividing_angle); 
-	    new_ellipse.c2 = origin_c2 + 0.5*sin(dividing_angle); 
-	    geometry.voronoi_cell_list[div_index].ellipse.c1 = origin_c1 - 0.5*cos(dividing_angle);
-	    geometry.voronoi_cell_list[div_index].ellipse.c2 = origin_c2 - 0.5*sin(dividing_angle);
-
-	    new_cell.c1 = new_ellipse.c1;
-	    new_cell.c2 = new_ellipse.c2;
-	    geometry.voronoi_cell_list[div_index].c1 = geometry.voronoi_cell_list[div_index].ellipse.c1;
-	    geometry.voronoi_cell_list[div_index].c2 = geometry.voronoi_cell_list[div_index].ellipse.c2;
-	    
-	    delta_H = fabs(cos(dividing_angle)*scaling_beta1/(scaling_beta1 + scaling_beta2))
-		+ fabs(sin(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2));
-	    delta_L = fabs(sin(dividing_angle)*scaling_beta1/(scaling_beta1 + scaling_beta2))
-		+ fabs(cos(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2));
-	    delta_H = 4.0*0.25*delta_H / geometry.boundary_data.L;
-	    delta_L = 4.0*0.25*delta_L / geometry.boundary_data.H;
-	    geometry.boundary_data.set_boundary_data(geometry.boundary_data.L + delta_L, 
-						     geometry.boundary_data.H + delta_H);
-
-	    // naming the cell
-	    geometry.cell_number = geometry.cell_number + 1;
-	    new_ellipse.ellipse_id = geometry.cell_number;
-	    new_cell.ellipse = new_ellipse;
-	    new_cell.cell_id = new_ellipse.ellipse_id;
-	    geometry.voronoi_cell_list.push_back(new_cell);
-
-	    double ratio = 0.0;
-	    double total_counter = 0.0;
-	    // update cell positions
-	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
-	    {
-	    	//geometry.output_cell(geometry.voronoi_cell_list[k]);
-		if ( geometry.voronoi_cell_list[k].cell_id < 8000)
-		//if (geometry.voronoi_cell_list[k].cell_id == 1)
-		{
-		    total_counter = total_counter + 1.0;
-		    Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
-		    if ( converted_ellipse.a / converted_ellipse.b > q0 )
-		    {
-			ratio = ratio + 1.0;
-		    }
-		    double x_coord = geometry.voronoi_cell_list[k].ellipse.c1 - origin_c1;
-		    double y_coord = geometry.voronoi_cell_list[k].ellipse.c2 - origin_c2;
-		    double x_coord1 = x_coord*cos(dividing_angle) + y_coord*sin(dividing_angle);
-		    double y_coord1 = -x_coord*sin(dividing_angle) + y_coord*cos(dividing_angle);
-		    /* double x_coord_new1 = x_coord1*( 1.0 +  */
-		    /* 				     A1*exp( -( scaling_beta1*fabs(x_coord1) +  */
-		    /* 						scaling_beta2*fabs(y_coord1) ) ) ); */
-		    /* double y_coord_new1 = y_coord1*( 1.0 +  */
-		    /* 				     A2*exp( -( scaling_beta1*fabs(x_coord1) +  */
-		    /* 						scaling_beta2*fabs(y_coord1) ) ) ); */
-		    double x_coord_new1 = x_coord1*( 1.0 +
-		    				     exp( -( scaling_beta1*fabs(x_coord1) +
-		    						scaling_beta2*y_coord1*y_coord1 ) ) );
-		    double y_coord_new1 = y_coord1;
-		    double x_coord_new = x_coord_new1*cos(dividing_angle) - y_coord_new1*sin(dividing_angle);
-		    double y_coord_new = x_coord_new1*sin(dividing_angle) + y_coord_new1*cos(dividing_angle);
-		    geometry.voronoi_cell_list[k].ellipse.c1 = 
-			geometry.voronoi_cell_list[k].ellipse.c1 + x_coord_new - x_coord;
-		    geometry.voronoi_cell_list[k].ellipse.c2 = 
-			geometry.voronoi_cell_list[k].ellipse.c2 + y_coord_new - y_coord;
-		}
-	    }
-	    div_info.ratio = ratio / total_counter;
-	    return div_info;
 	}
+	std::cout << div_index << "\n";
+	// ***************
+	//div_index = 100;
+	// ***************
+	//getchar();
+	Ellipse dividing_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[div_index]);
+	VoronoiCell new_cell = geometry.voronoi_cell_list[div_index];
+	Ellipse new_ellipse = geometry.voronoi_cell_list[div_index].ellipse;
+	double origin_c1 = new_ellipse.c1;
+	double origin_c2 = new_ellipse.c2;
+	double delta_H = 0.0;
+	double delta_L = 0.0;
+	double dividing_angle;
+	//if ( dividing_ellipse.a / dividing_ellipse.b > q0 ) // fix
+	if ( dividing_ellipse.accumu_a / dividing_ellipse.accumu_b > q0 ) // fix
+	{
+	    dividing_angle = atan2(dividing_ellipse.v2, dividing_ellipse.v1);
+	    div_info.type = 1;
+	}
+	else
+	{
+	    dividing_angle = fmod( double(rand() % 100000), PI );
+	    div_info.type = 0;
+	}
+	div_info.x = origin_c1;
+	div_info.y = origin_c2;
+	new_ellipse.c1 = origin_c1 + 0.5*cos(dividing_angle); 
+	new_ellipse.c2 = origin_c2 + 0.5*sin(dividing_angle); 
+	geometry.voronoi_cell_list[div_index].ellipse.c1 = origin_c1 - 0.5*cos(dividing_angle);
+	geometry.voronoi_cell_list[div_index].ellipse.c2 = origin_c2 - 0.5*sin(dividing_angle);
+
+	new_cell.c1 = new_ellipse.c1;
+	new_cell.c2 = new_ellipse.c2;
+	geometry.voronoi_cell_list[div_index].c1 = geometry.voronoi_cell_list[div_index].ellipse.c1;
+	geometry.voronoi_cell_list[div_index].c2 = geometry.voronoi_cell_list[div_index].ellipse.c2;
+	    
+	/* delta_H = fabs(cos(dividing_angle)*scaling_beta1/(scaling_beta1 + scaling_beta2)) */
+	/* 	+ fabs(sin(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2)); */
+	/* delta_L = fabs(sin(dividing_angle)*scaling_beta1/(scaling_beta1 + scaling_beta2)) */
+	/* 	+ fabs(cos(dividing_angle)*scaling_beta2/(scaling_beta1 + scaling_beta2)); */
+
+	delta_L = fabs(cos(dividing_angle));
+	delta_H = fabs(sin(dividing_angle));
+	delta_H = 4.0*0.25*delta_H / geometry.boundary_data.L;
+	delta_L = 4.0*0.25*delta_L / geometry.boundary_data.H;
+	geometry.boundary_data.set_boundary_data(geometry.boundary_data.L + delta_L, 
+						 geometry.boundary_data.H + delta_H);
+
+	// naming the cell
+	geometry.cell_number = geometry.cell_number + 1;
+	new_ellipse.ellipse_id = geometry.cell_number;
+	new_cell.ellipse = new_ellipse;
+	new_cell.cell_id = new_ellipse.ellipse_id;
+	geometry.voronoi_cell_list.push_back(new_cell);
+
+	for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
+	{
+	    if ( geometry.voronoi_cell_list[k].cell_id < 8000)
+	    {
+		double x_coord = geometry.voronoi_cell_list[k].ellipse.c1 - origin_c1;
+		double y_coord = geometry.voronoi_cell_list[k].ellipse.c2 - origin_c2;
+		double x_coord1 = x_coord*cos(dividing_angle) + y_coord*sin(dividing_angle);
+		double y_coord1 = -x_coord*sin(dividing_angle) + y_coord*cos(dividing_angle);
+		/* double x_coord_new1 = x_coord1*( 1.0 +  */
+		/* 				     A1*exp( -( scaling_beta1*fabs(x_coord1) +  */
+		/* 						scaling_beta2*fabs(y_coord1) ) ) ); */
+		/* double y_coord_new1 = y_coord1*( 1.0 +  */
+		/* 				     A2*exp( -( scaling_beta1*fabs(x_coord1) +  */
+		/* 						scaling_beta2*fabs(y_coord1) ) ) ); */
+		double x_coord_new1 = x_coord1*( 1.0 +
+						 exp( -( scaling_beta1*fabs(x_coord1) +
+							 scaling_beta2*y_coord1*y_coord1 ) ) );
+		double y_coord_new1 = y_coord1;
+		double x_coord_new = x_coord_new1*cos(dividing_angle) - y_coord_new1*sin(dividing_angle);
+		double y_coord_new = x_coord_new1*sin(dividing_angle) + y_coord_new1*cos(dividing_angle);
+		double dist = sqrt(4.0*x_coord1*x_coord1 + y_coord1*y_coord1);
+		// update position of cells
+		geometry.voronoi_cell_list[k].ellipse.c1 = 
+		    geometry.voronoi_cell_list[k].ellipse.c1 + x_coord_new - x_coord;
+		geometry.voronoi_cell_list[k].ellipse.c2 = 
+		    geometry.voronoi_cell_list[k].ellipse.c2 + y_coord_new - y_coord;
+		geometry.voronoi_cell_list[k].ellipse.accumu_a =
+		    geometry.voronoi_cell_list[k].ellipse.accumu_a +
+		    exp(-0.2*dist)*geometry.voronoi_cell_list[k].ellipse.a*(1.0-mu*fabs(cos(dividing_angle)));
+		geometry.voronoi_cell_list[k].ellipse.accumu_b =
+		    geometry.voronoi_cell_list[k].ellipse.accumu_b +
+		    exp(-0.2*dist)*geometry.voronoi_cell_list[k].ellipse.b*(1.0-mu*fabs(sin(dividing_angle)));
+	    }
+	}
+	return div_info;
+    }
+
+    double update_shape(Geometry &geometry, Force &force)
+    {
+	double ratio = 0.0;
+	double total_counter = 0.0;
+	// update cell positions
+	for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
+	{
+	    //geometry.output_cell(geometry.voronoi_cell_list[k]);
+	    if ( geometry.voronoi_cell_list[k].cell_id < 8000)
+		//if (geometry.voronoi_cell_list[k].cell_id == 1)
+	    {
+		total_counter = total_counter + 1.0;
+
+		Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
+
+		/* geometry.voronoi_cell_list[k].ellipse.accumu_a = */
+		/*     (1.0-omega)*geometry.voronoi_cell_list[k].ellipse.accumu_a + */
+		/*     omega*converted_ellipse.a; */
+		/* geometry.voronoi_cell_list[k].ellipse.accumu_b = */
+		/*     (1.0-omega)*geometry.voronoi_cell_list[k].ellipse.accumu_b + */
+		/*     omega*converted_ellipse.b; */
+
+		if ( geometry.voronoi_cell_list[k].ellipse.accumu_a /
+		     geometry.voronoi_cell_list[k].ellipse.accumu_b > q0 )
+		{
+		    ratio = ratio + 1.0;
+		}		    
+	    }
+	}
+	ratio = ratio / total_counter;
+	return ratio;
+    }
 
     int one_step_solution_modify(Geometry &geometry, Force &force, std::string file_index)
+    {
+	std::ofstream foutput("out/eigen" + file_index + ".txt");
+	if(!foutput) 
 	{
-	    std::ofstream foutput("out/eigen" + file_index + ".txt");
-	    if(!foutput) 
-	    {
-		std::cout << "file open error.\n";
-		return -1; 
-	    }
-
-	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
-	    {
-	    	//geometry.output_cell(geometry.voronoi_cell_list[k]);
-		if ( geometry.voronoi_cell_list[k].cell_id < 8000)
-		//if (geometry.voronoi_cell_list[k].cell_id == 1)
-		{
-		    std::cout << "k: " << k << "cell id: " 
-			      << geometry.voronoi_cell_list[k].cell_id << "\n";
-		    double temp = sqrt(6.0*PI/sqrt(3));
-		    double radius = sqrt(geometry.voronoi_cell_list[k].area/PI);
-		    double a = geometry.voronoi_cell_list[k].ellipse.a;
-		    double b = geometry.voronoi_cell_list[k].ellipse.b;
-		    double sum_force_x = 0.0;
-		    double sum_force_y = 0.0;
-		    double sum_force2_x = 0.0;
-		    double sum_force2_y = 0.0;
-		    double sigma11 = 0.0;
-		    double sigma12 = 0.0;
-		    double sigma21 = 0.0;
-		    double sigma22 = 0.0;
-		    double oxi = geometry.voronoi_cell_list[k].ellipse.c1;
-		    double oyi = geometry.voronoi_cell_list[k].ellipse.c2;
-		    for ( int kk=0; kk<geometry.voronoi_cell_list[k].neighbor_id.size(); kk++ )
-		    {
-			int edge_id = geometry.voronoi_cell_list[k].edge_set[kk];
-			int jcell_id = geometry.map_cell_id[geometry.voronoi_cell_list[k].neighbor_id[kk]];
-			double eta_hat = eta*geometry.voronoi_edge_list[edge_id].length/dt;
-			double cx = geometry.voronoi_edge_list[edge_id].c1;
-			double cy = geometry.voronoi_edge_list[edge_id].c2;
-			double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
-			double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
-			double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
-			sum_force_x = sum_force_x + 
-			    force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
-			sum_force_y = sum_force_y + 
-			    force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
-
-			sum_force2_x = sum_force2_x + 
-			    force.force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
-			sum_force2_y = sum_force2_y + 
-			    force.force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
-
-			sigma11 = sigma11 + force.force_list[edge_id]*cos(theta)*cos(theta);
-			sigma12 = sigma12 + force.force_list[edge_id]*cos(theta)*sin(theta);
-			sigma21 = sigma21 + force.force_list[edge_id]*sin(theta)*cos(theta);
-			sigma22 = sigma22 + force.force_list[edge_id]*sin(theta)*sin(theta);
-		    }
-		    // geometry.voronoi_cell_list[k].ellipse.c1 = 
-		    // 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
-
-		    geometry.voronoi_cell_list[k].ellipse.c1 = 
-		    	geometry.voronoi_cell_list[k].ellipse.c1 + (sum_force_x + sum_force2_x)*dt;
-		    geometry.voronoi_cell_list[k].ellipse.c2 = 
-		    	geometry.voronoi_cell_list[k].ellipse.c2 + (sum_force_y + sum_force2_y)*dt;
-
-		    // geometry.voronoi_cell_list[k].ellipse.c1 = 
-		    // 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
-		    // geometry.voronoi_cell_list[k].ellipse.c2 = 
-		    // 	geometry.voronoi_cell_list[k].ellipse.c2 + sum_force_y*dt;
-
-		    double trace = sigma11 + sigma22;
-		    double det = sigma11*sigma22 - sigma12*sigma21;
-		    double lambda1 = 0.5*trace + sqrt(0.25*trace*trace - det);
-		    double lambda2 = 0.5*trace - sqrt(0.25*trace*trace - det);
-		    double v1, v2;
-		    double u1, u2;
-		    if ( sigma12 !=0 )
-		    {
-			v1 = lambda1 - sigma22;
-			v2 = sigma12;
-			u1 = lambda2 - sigma22;
-			u2 = sigma12;
-		    }
-		    else
-		    {
-			v1 = 1;
-			v2 = 0;
-			u1 = 0;
-			u2 = 1;
-		    }
-		    temp = sqrt(v1*v1 + v2*v2);
-		    v1 = v1/temp;
-		    v2 = v2/temp;
-		    temp = sqrt(u1*u1 + u2*u2);
-		    u1 = u1/temp;
-		    u2 = u2/temp;
-		    // geometry.voronoi_cell_list[k].ellipse.c1 = 
-		    // 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
-		    
-		    // std::cout << "sigma: " << sigma11 << ", " << sigma12 << ", " << sigma22 << "\n";
-		    // std::cout << "lambda: " << lambda1 << ", " << lambda2 << "\n";
-		    // std::cout << "v: " << v1 << ", " << v2 << "\n";
-		    // std::cout << "u: " << u1 << ", " << u2 << "\n";
-		    // getchar();
-
-		    foutput << geometry.voronoi_cell_list[k].cell_id << ", " 
-			    << oxi << ", " << oyi << ", " 
-			    << lambda1 << ", " << lambda2 << ", " 
-			    << oxi+5*lambda1*v1 << ", " << oyi+5*lambda1*v2 << ", " 
-			    << oxi+5*lambda2*u1 << ", " << oyi+5*lambda2*u2 << "\n";
-		}
-	    }
-	    foutput.close();
-	    return 0;
+	    std::cout << "file open error.\n";
+	    return -1; 
 	}
+
+	for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
+	{
+	    //geometry.output_cell(geometry.voronoi_cell_list[k]);
+	    if ( geometry.voronoi_cell_list[k].cell_id < 8000)
+		//if (geometry.voronoi_cell_list[k].cell_id == 1)
+	    {
+		/* std::cout << "k: " << k << "cell id: "  */
+		/* 	      << geometry.voronoi_cell_list[k].cell_id << "\n"; */
+		/* double temp = sqrt(6.0*PI/sqrt(3)); */
+		/* double radius = sqrt(geometry.voronoi_cell_list[k].area/PI); */
+		/* double a = geometry.voronoi_cell_list[k].ellipse.a; */
+		/* double b = geometry.voronoi_cell_list[k].ellipse.b; */
+		double sum_force_x = 0.0;
+		double sum_force_y = 0.0;
+		double sum_force2_x = 0.0;
+		double sum_force2_y = 0.0;
+		/* double sigma11 = 0.0; */
+		/* double sigma12 = 0.0; */
+		/* double sigma21 = 0.0; */
+		/* double sigma22 = 0.0; */
+		/* double oxi = geometry.voronoi_cell_list[k].ellipse.c1; */
+		/* double oyi = geometry.voronoi_cell_list[k].ellipse.c2; */
+		for ( int kk=0; kk<geometry.voronoi_cell_list[k].neighbor_id.size(); kk++ )
+		{
+		    int edge_id = geometry.voronoi_cell_list[k].edge_set[kk];
+		    //int jcell_id = geometry.map_cell_id[geometry.voronoi_cell_list[k].neighbor_id[kk]];
+		    //double eta_hat = eta*geometry.voronoi_edge_list[edge_id].length/dt;
+		    //double cx = geometry.voronoi_edge_list[edge_id].c1;
+		    //double cy = geometry.voronoi_edge_list[edge_id].c2;
+		    //double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
+		    //double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
+		    //double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
+		    sum_force_x = sum_force_x + 
+			force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
+		    sum_force_y = sum_force_y + 
+			force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
+
+		    sum_force2_x = sum_force2_x + 
+			force.force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
+		    sum_force2_y = sum_force2_y + 
+			force.force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2;
+
+		    /* sigma11 = sigma11 + force.force_list[edge_id]*cos(theta)*cos(theta); */
+		    /* sigma12 = sigma12 + force.force_list[edge_id]*cos(theta)*sin(theta); */
+		    /* sigma21 = sigma21 + force.force_list[edge_id]*sin(theta)*cos(theta); */
+		    /* sigma22 = sigma22 + force.force_list[edge_id]*sin(theta)*sin(theta); */
+		}
+		// geometry.voronoi_cell_list[k].ellipse.c1 = 
+		// 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
+
+		geometry.voronoi_cell_list[k].ellipse.c1 = 
+		    geometry.voronoi_cell_list[k].ellipse.c1 + (sum_force_x + sum_force2_x)*dt;
+		geometry.voronoi_cell_list[k].ellipse.c2 = 
+		    geometry.voronoi_cell_list[k].ellipse.c2 + (sum_force_y + sum_force2_y)*dt;
+
+		// geometry.voronoi_cell_list[k].ellipse.c1 = 
+		// 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
+		// geometry.voronoi_cell_list[k].ellipse.c2 = 
+		// 	geometry.voronoi_cell_list[k].ellipse.c2 + sum_force_y*dt;
+
+		/* double trace = sigma11 + sigma22; */
+		/* double det = sigma11*sigma22 - sigma12*sigma21; */
+		/* double lambda1 = 0.5*trace + sqrt(0.25*trace*trace - det); */
+		/* double lambda2 = 0.5*trace - sqrt(0.25*trace*trace - det); */
+		/* double v1, v2; */
+		/* double u1, u2; */
+		/* if ( sigma12 !=0 ) */
+		/* { */
+		/* 	v1 = lambda1 - sigma22; */
+		/* 	v2 = sigma12; */
+		/* 	u1 = lambda2 - sigma22; */
+		/* 	u2 = sigma12; */
+		/* } */
+		/* else */
+		/* { */
+		/* 	v1 = 1; */
+		/* 	v2 = 0; */
+		/* 	u1 = 0; */
+		/* 	u2 = 1; */
+		/* } */
+		/* temp = sqrt(v1*v1 + v2*v2); */
+		/* v1 = v1/temp; */
+		/* v2 = v2/temp; */
+		/* temp = sqrt(u1*u1 + u2*u2); */
+		/* u1 = u1/temp; */
+		/* u2 = u2/temp; */
+
+		// geometry.voronoi_cell_list[k].ellipse.c1 = 
+		// 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
+		    
+		// std::cout << "sigma: " << sigma11 << ", " << sigma12 << ", " << sigma22 << "\n";
+		// std::cout << "lambda: " << lambda1 << ", " << lambda2 << "\n";
+		// std::cout << "v: " << v1 << ", " << v2 << "\n";
+		// std::cout << "u: " << u1 << ", " << u2 << "\n";
+		// getchar();
+
+		/* foutput << geometry.voronoi_cell_list[k].cell_id << ", "  */
+		/* 	    << oxi << ", " << oyi << ", "  */
+		/* 	    << lambda1 << ", " << lambda2 << ", "  */
+		/* 	    << oxi+5*lambda1*v1 << ", " << oyi+5*lambda1*v2 << ", "  */
+		/* 	    << oxi+5*lambda2*u1 << ", " << oyi+5*lambda2*u2 << "\n"; */
+	    }
+	}
+	foutput.close();
+	return 0;
+    }
 
     // int one_step_solution(Geometry &geometry, Force &force)
     // 	{
