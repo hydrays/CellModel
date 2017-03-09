@@ -13,6 +13,7 @@ public:
     double u1, u2;
     double a, b;
     double accumu_a, accumu_b;
+    double distor_a, distor_b;
     double area;
     double theta0;
 
@@ -32,6 +33,8 @@ public:
 	    b = sqrt(u1*u1 + u2*u2);
 	    accumu_a = a;
 	    accumu_b = b;
+	    distor_a = 0.0;
+	    distor_b = 0.0;
 	}
     
     bool isInside(const double x, const double y)

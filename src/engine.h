@@ -13,6 +13,7 @@
 #include "ellipse.h"
 #include "geometry.h"
 #include <time.h>
+#include <random>
 //#include "SuiteSparseQR.hpp"
 
 struct DivInfo
@@ -26,47 +27,45 @@ struct DivInfo
 class Engine
 {
     double eta = 1.0;
-    // ******
-    // !!!!!!
+    double beta = 0.5;
     double dt = 0.2;
-    double q0 = 1.46;
     double scaling_beta1 = 0.5;
     double scaling_beta2 = 0.05;
-    double A1 = 1.0;
-    double A2 = 0.1;
     double F_factor = 0.0;
     double p0 = 0.63;
     int div_counter;
-    double omega = 0.2;
-    double mu = 0.25;
+
+    std::random_device rd;
+    std::mt19937 gen{rd()};
+    std::uniform_real_distribution<> runif{0.0, 1.0};
+    std::uniform_int_distribution<> rid{1, 32767};
     
 public:    
-    int run(Geometry &geometry, Force &force)
-    {
-	std::ofstream foutput("out/statistics.txt");
-	if(!foutput) 
+    int run(Geometry &geometry, Force &force, int process_id)
 	{
-	    std::cout << "file open error.\n";
-	    return -1; 
-	}
+	    std::ofstream foutput("out/statistics" + std::to_string(process_id) +".txt");
+	    if(!foutput) 
+	    {
+		std::cout << "file open error.\n";
+		return -1; 
+	    }
 
-	srand (time(NULL));
 	div_counter = 0;
 	F_factor = 0.0;
 
 	DivInfo div_info;
 	double ratio;
 
-	for ( int istep=100; istep<2000; istep++ )
+	for ( int istep=100; istep<1100; istep++ )
 	    //int istep = 100;
 	{
-	    std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
+	    //std::cout << "ellipse num: " << geometry.ellipse_list.size() << "\n";
 	    //for ( int jstep=0; jstep<10; jstep++ )
 	    //{
-	    geometry.output_cell_list(std::to_string(istep));
-	    geometry.output_ellipse_list(std::to_string(istep));
+	    //geometry.output_cell_list(std::to_string(istep));
+	    //geometry.output_ellipse_list(std::to_string(istep));
 	    force.update_force_field(geometry);
-	    force.output_force_filed(geometry, std::to_string(istep));
+	    //force.output_force_filed(geometry, std::to_string(istep));
 	    //force.output_force_filed(geometry, std::to_string(istep));
 	    one_step_solution_modify(geometry, force, std::to_string(istep));
 	    //}
@@ -134,7 +133,7 @@ public:
 	    
 	while (true)
 	{
-	    div_index = rand() % geometry.voronoi_cell_list.size();
+	    div_index = rid(gen) % geometry.voronoi_cell_list.size();
 	    if ( geometry.voronoi_cell_list[div_index].cell_id < 8000 )
 	    {
 		std::cout << "dividing cell: " << div_index << "==";
@@ -155,15 +154,20 @@ public:
 	double delta_L = 0.0;
 	double dividing_angle;
 	//if ( dividing_ellipse.a / dividing_ellipse.b > q0 ) // fix
-	if ( dividing_ellipse.accumu_a / dividing_ellipse.accumu_b > q0 ) // fix
+	double s = dividing_ellipse.distor_a - dividing_ellipse.distor_b;
+	double p = p0 + (1-p0)*2*(1/(1+exp(-beta*(s))) - 0.5);
+	//if ( dividing_ellipse.distor_a - dividing_ellipse.distor_b > 0.0 ) // fix
+	if ( runif(gen) <= p ) // fix
 	{
-	    dividing_angle = atan2(dividing_ellipse.v2, dividing_ellipse.v1);
-	    div_info.type = 1;
+	    dividing_angle = runif(gen)*PI;
+	    //dividing_angle = fmod( double(rand() % 100000), PI );
+	    div_info.type = 0;
 	}
 	else
 	{
-	    dividing_angle = fmod( double(rand() % 100000), PI );
-	    div_info.type = 0;
+	    //dividing_angle = atan2(dividing_ellipse.v2, dividing_ellipse.v1);
+	    dividing_angle = 0.0;
+	    div_info.type = 1;
 	}
 	div_info.x = origin_c1;
 	div_info.y = origin_c2;
@@ -204,30 +208,41 @@ public:
 		double y_coord = geometry.voronoi_cell_list[k].ellipse.c2 - origin_c2;
 		double x_coord1 = x_coord*cos(dividing_angle) + y_coord*sin(dividing_angle);
 		double y_coord1 = -x_coord*sin(dividing_angle) + y_coord*cos(dividing_angle);
-		/* double x_coord_new1 = x_coord1*( 1.0 +  */
+
+                /* double x_coord_new1 = x_coord1*( 1.0 +  */
 		/* 				     A1*exp( -( scaling_beta1*fabs(x_coord1) +  */
 		/* 						scaling_beta2*fabs(y_coord1) ) ) ); */
 		/* double y_coord_new1 = y_coord1*( 1.0 +  */
 		/* 				     A2*exp( -( scaling_beta1*fabs(x_coord1) +  */
 		/* 						scaling_beta2*fabs(y_coord1) ) ) ); */
+
+		/* // middle recent version */
+		/* double x_coord_new1 = x_coord1*( 1.0 + */
+		/* 				 exp( -( scaling_beta1*fabs(x_coord1) + */
+		/* 					 scaling_beta2*y_coord1*y_coord1 ) ) ); */
+		/* double y_coord_new1 = y_coord1; */
+		/* double x_coord_new = x_coord_new1*cos(dividing_angle) - y_coord_new1*sin(dividing_angle); */
+		/* double y_coord_new = x_coord_new1*sin(dividing_angle) + y_coord_new1*cos(dividing_angle); */
+
 		double x_coord_new1 = x_coord1*( 1.0 +
 						 exp( -( scaling_beta1*fabs(x_coord1) +
 							 scaling_beta2*y_coord1*y_coord1 ) ) );
 		double y_coord_new1 = y_coord1;
 		double x_coord_new = x_coord_new1*cos(dividing_angle) - y_coord_new1*sin(dividing_angle);
 		double y_coord_new = x_coord_new1*sin(dividing_angle) + y_coord_new1*cos(dividing_angle);
-		double dist = sqrt(4.0*x_coord1*x_coord1 + y_coord1*y_coord1);
+		
+		double dist = sqrt(x_coord1*x_coord1 + y_coord1*y_coord1);
 		// update position of cells
 		geometry.voronoi_cell_list[k].ellipse.c1 = 
 		    geometry.voronoi_cell_list[k].ellipse.c1 + x_coord_new - x_coord;
 		geometry.voronoi_cell_list[k].ellipse.c2 = 
 		    geometry.voronoi_cell_list[k].ellipse.c2 + y_coord_new - y_coord;
-		geometry.voronoi_cell_list[k].ellipse.accumu_a =
-		    geometry.voronoi_cell_list[k].ellipse.accumu_a +
-		    exp(-0.2*dist)*geometry.voronoi_cell_list[k].ellipse.a*(1.0-mu*fabs(cos(dividing_angle)));
-		geometry.voronoi_cell_list[k].ellipse.accumu_b =
-		    geometry.voronoi_cell_list[k].ellipse.accumu_b +
-		    exp(-0.2*dist)*geometry.voronoi_cell_list[k].ellipse.b*(1.0-mu*fabs(sin(dividing_angle)));
+		geometry.voronoi_cell_list[k].ellipse.distor_a =
+		    geometry.voronoi_cell_list[k].ellipse.distor_a +
+		    exp(-0.02*dist)*fabs(cos(dividing_angle));
+		geometry.voronoi_cell_list[k].ellipse.distor_b =
+		    geometry.voronoi_cell_list[k].ellipse.distor_b +
+		    1.9225*exp(-0.02*dist)*fabs(sin(dividing_angle));
 	    }
 	}
 	return div_info;
@@ -255,8 +270,8 @@ public:
 		/*     (1.0-omega)*geometry.voronoi_cell_list[k].ellipse.accumu_b + */
 		/*     omega*converted_ellipse.b; */
 
-		if ( geometry.voronoi_cell_list[k].ellipse.accumu_a /
-		     geometry.voronoi_cell_list[k].ellipse.accumu_b > q0 )
+		if ( geometry.voronoi_cell_list[k].ellipse.distor_a -
+		     geometry.voronoi_cell_list[k].ellipse.distor_b > 0.0 )
 		{
 		    ratio = ratio + 1.0;
 		}		    

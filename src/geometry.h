@@ -1,4 +1,3 @@
-
 #ifndef GEOMETRY
 #define GEOMETRY
 
@@ -1088,7 +1087,7 @@ public:
 	    return 0;
 	}
 
-    int make_edge_list()
+    int make_edge_list() throw(int)
 	{
 	    voronoi_edge_list.clear();
 	    //make sure the edge_id is the same as the index in edge_list
@@ -1146,7 +1145,9 @@ public:
 		    }
 		    std::cout << "\n";
 		    side_colors.clear();
-		    getchar();
+		    //getchar();
+		    //exit (EXIT_FAILURE);
+		    throw 20;
 		}
 		edge.side_colors = side_colors;
 		//make sure the edge_id is the same as the index in edge_list
@@ -1290,13 +1291,15 @@ public:
 		{
 		    Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
 		    //double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
-		    double aspect_ratio = voronoi_cell_list[k].ellipse.accumu_a /
-			voronoi_cell_list[k].ellipse.accumu_b;
+		    /* double aspect_ratio = voronoi_cell_list[k].ellipse.accumu_a / */
+		    /* 	voronoi_cell_list[k].ellipse.accumu_b; */
+		    double aspect_ratio = voronoi_cell_list[k].ellipse.distor_a
+			- voronoi_cell_list[k].ellipse.distor_a; 
 		    fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
 			voronoi_cell_list[k].ellipse.c1 << ", " << 
 			voronoi_cell_list[k].ellipse.c2 << ", " << 
-			voronoi_cell_list[k].ellipse.accumu_a << ", " << 
-			voronoi_cell_list[k].ellipse.accumu_b << ", " << 
+			voronoi_cell_list[k].ellipse.distor_a << ", " << 
+			voronoi_cell_list[k].ellipse.distor_b << ", " << 
 			converted_ellipse.a << ", " << 
 			converted_ellipse.b << ", " << 
 			converted_ellipse.v1 << ", " << 

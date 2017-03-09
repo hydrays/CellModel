@@ -10,7 +10,7 @@ class Simulator
     
 public:
     int run();
-    
+    int run(int);    
 };
 
 #endif
