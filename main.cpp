@@ -4,7 +4,7 @@
   
 int main()
 {
-    for ( int process_id=0; process_id < 100; process_id++ )
+    for ( int process_id=0; process_id < 5; process_id++ )
     {
 	try
 	{

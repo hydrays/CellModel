@@ -16,6 +16,7 @@ public:
     double distor_a, distor_b;
     double area;
     double theta0;
+    int type;
 
 public:
     Ellipse(){};
@@ -33,8 +34,8 @@ public:
 	    b = sqrt(u1*u1 + u2*u2);
 	    accumu_a = a;
 	    accumu_b = b;
-	    distor_a = 0.0;
-	    distor_b = 0.0;
+	    distor_a = a;
+	    distor_b = b;
 	}
     
     bool isInside(const double x, const double y)
