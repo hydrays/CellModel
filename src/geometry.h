@@ -335,7 +335,6 @@ public:
 		//std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
 		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 		ellipse.area = PI*ellipse.a*ellipse.b;
-		ellipse.theta0 = 0.0;
 		ellipse.type = 1;
 		ellipse_list.push_back(ellipse);
 	    }
@@ -354,7 +353,6 @@ public:
 	    double u2 = 1.0;
 	    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 	    ellipse.area = PI*ellipse.a*ellipse.b;
-	    ellipse.theta0 = 0.0;
 	    ellipse.type = 20;
 	    ellipse_list.push_back(ellipse);
 	}
@@ -370,7 +368,6 @@ public:
 	    double u2 = 1.0;
 	    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 	    ellipse.area = PI*ellipse.a*ellipse.b;
-	    ellipse.theta0 = 0.0;
 	    ellipse.type = 10;
 	    ellipse_list.push_back(ellipse);
 	}
@@ -1336,15 +1333,9 @@ public:
 	    {
 		Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
 		double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
-		/* double aspect_ratio = voronoi_cell_list[k].ellipse.accumu_a / */
-		/* 	voronoi_cell_list[k].ellipse.accumu_b; */
-		/* double aspect_ratio = voronoi_cell_list[k].ellipse.distor_a */
-		/* 	- voronoi_cell_list[k].ellipse.distor_a;  */
 		fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
 		    voronoi_cell_list[k].ellipse.c1 << ", " << 
 		    voronoi_cell_list[k].ellipse.c2 << ", " << 
-		    /* voronoi_cell_list[k].ellipse.distor_a << ", " <<  */
-		    /* voronoi_cell_list[k].ellipse.distor_b << ", " <<  */
 		    voronoi_cell_list[k].ellipse.a << ", " <<
 		    voronoi_cell_list[k].ellipse.b << ", " <<
 		    converted_ellipse.a << ", " << 

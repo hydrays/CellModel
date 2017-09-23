@@ -12,10 +12,7 @@ public:
     double v1, v2;
     double u1, u2;
     double a, b;
-    double accumu_a, accumu_b;
-    double distor_a, distor_b;
     double area;
-    double theta0;
     int type;
 
 public:
@@ -32,10 +29,6 @@ public:
 	    }
 	    a = sqrt(v1*v1 + v2*v2);
 	    b = sqrt(u1*u1 + u2*u2);
-	    accumu_a = a;
-	    accumu_b = b;
-	    distor_a = a;
-	    distor_b = b;
 	}
     
     bool isInside(const double x, const double y)

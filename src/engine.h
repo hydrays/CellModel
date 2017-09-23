@@ -67,7 +67,8 @@ public:
 	    one_step_solution_modify(geometry, force, std::to_string(istep));
 
 	    if ( istep % 10 == 0)
-	      {
+	    //if ( 0 )
+	    {
 	        div_info = cell_division(geometry, force);
 	        div_counter = div_counter + 1;
 	        if ( div_info.type==1 )
@@ -236,18 +237,7 @@ public:
 		//if (geometry.voronoi_cell_list[k].cell_id == 1)
 	    {
 		total_counter = total_counter + 1.0;
-
 		Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
-
-		/* geometry.voronoi_cell_list[k].ellipse.accumu_a = */
-		/*     (1.0-omega)*geometry.voronoi_cell_list[k].ellipse.accumu_a + */
-		/*     omega*converted_ellipse.a; */
-		/* geometry.voronoi_cell_list[k].ellipse.accumu_b = */
-		/*     (1.0-omega)*geometry.voronoi_cell_list[k].ellipse.accumu_b + */
-		/*     omega*converted_ellipse.b; */
-
-		/* if ( geometry.voronoi_cell_list[k].ellipse.distor_a/ */
-		/*      geometry.voronoi_cell_list[k].ellipse.distor_b > q0 ) */
 		if ( converted_ellipse.a / converted_ellipse.b > q0 )
 		{
 		    ratio = ratio + 1.0;
@@ -286,22 +276,34 @@ public:
 		double sum_force2_y = 0.0;
 		double sum_force3_x = 0.0;
 		double sum_force3_y = 0.0;
+		double torque = 0.0;
 		/* double sigma11 = 0.0; */
 		/* double sigma12 = 0.0; */
 		/* double sigma21 = 0.0; */
 		/* double sigma22 = 0.0; */
-		/* double oxi = geometry.voronoi_cell_list[k].ellipse.c1; */
-		/* double oyi = geometry.voronoi_cell_list[k].ellipse.c2; */
+		double oxi = geometry.voronoi_cell_list[k].ellipse.c1;
+		double oyi = geometry.voronoi_cell_list[k].ellipse.c2;
 		for ( int kk=0; kk<geometry.voronoi_cell_list[k].neighbor_id.size(); kk++ )
 		{
 		    int edge_id = geometry.voronoi_cell_list[k].edge_set[kk];
 		    //int jcell_id = geometry.map_cell_id[geometry.voronoi_cell_list[k].neighbor_id[kk]];
 		    //double eta_hat = eta*geometry.voronoi_edge_list[edge_id].length/dt;
-		    //double cx = geometry.voronoi_edge_list[edge_id].c1;
-		    //double cy = geometry.voronoi_edge_list[edge_id].c2;
+		    double cx = geometry.voronoi_edge_list[edge_id].c1;
+		    double cy = geometry.voronoi_edge_list[edge_id].c2;
 		    //double oxj = geometry.voronoi_cell_list[jcell_id].ellipse.c1;
 		    //double oyj = geometry.voronoi_cell_list[jcell_id].ellipse.c2;
 		    //double theta = geometry.voronoi_cell_list[k].edges[kk].theta;
+		    /* torque = torque +  */
+		    /* 	(force.force_list[edge_id]+force.force_list2[edge_id]) */
+		    /* 	*geometry.voronoi_cell_list[k].edges[kk].n2*(cx-oxi) - */
+		    /* 	(force.force_list[edge_id]+force.force_list2[edge_id]) */
+		    /* 	*geometry.voronoi_cell_list[k].edges[kk].n1*(cy-oyi); */
+		    torque = torque +
+		    	force.force_list2[edge_id]
+		    	*geometry.voronoi_cell_list[k].edges[kk].n2*(cx-oxi) -
+		    	force.force_list2[edge_id]
+		    	*geometry.voronoi_cell_list[k].edges[kk].n1*(cy-oyi);
+
 		    sum_force_x = sum_force_x + 
 			force.force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1;
 		    sum_force_y = sum_force_y + 
@@ -339,13 +341,13 @@ public:
 		// boundary force
 		if ( geometry.voronoi_cell_list[k].ellipse.type == 10 )
 		{
-		    sum_force3_x = -0.02 - 2.0*(geometry.voronoi_cell_list[k].ellipse.c1 - L_min_old);
+		    sum_force3_x = -0.1 - 2.0*(geometry.voronoi_cell_list[k].ellipse.c1 - L_min_old);
 		    L_min = L_min + geometry.voronoi_cell_list[k].ellipse.c1;
 		    L_min_counter = L_min_counter + 1;
 		}
 		else if ( geometry.voronoi_cell_list[k].ellipse.type == 20 )
 		{
-		    sum_force3_x = 0.02 - 2.0*(geometry.voronoi_cell_list[k].ellipse.c1 - L_max_old);
+		    sum_force3_x = 0.1 - 2.0*(geometry.voronoi_cell_list[k].ellipse.c1 - L_max_old);
 		    L_max = L_max + geometry.voronoi_cell_list[k].ellipse.c1;
 		    L_max_counter = L_max_counter + 1;
 		}
@@ -390,6 +392,18 @@ public:
 		geometry.voronoi_cell_list[k].ellipse.c2 = 
 		    geometry.voronoi_cell_list[k].ellipse.c2 + (sum_force_y + sum_force2_y + sum_force3_x)*dt;
 
+		double d_phi = -torque*dt;
+		double v1, v2;
+		double u1, u2;
+		v1 = geometry.voronoi_cell_list[k].ellipse.v1;
+		v2 = geometry.voronoi_cell_list[k].ellipse.v2;
+		u1 = geometry.voronoi_cell_list[k].ellipse.u1;
+		u2 = geometry.voronoi_cell_list[k].ellipse.u2;
+		geometry.voronoi_cell_list[k].ellipse.v1 = v1*cos(d_phi) - v2*sin(d_phi);
+		geometry.voronoi_cell_list[k].ellipse.v2 = v1*sin(d_phi) + v2*cos(d_phi);
+		geometry.voronoi_cell_list[k].ellipse.u1 = u1*cos(d_phi) - u2*sin(d_phi);
+		geometry.voronoi_cell_list[k].ellipse.u2 = u1*sin(d_phi) + u2*cos(d_phi);
+		
 		// geometry.voronoi_cell_list[k].ellipse.c1 = 
 		// 	geometry.voronoi_cell_list[k].ellipse.c1 + sum_force_x*dt;
 		// geometry.voronoi_cell_list[k].ellipse.c2 = 
