@@ -160,6 +160,12 @@ inline bool operator == (VoronoiEdge const& edge1, VoronoiEdge const& edge2)
 
 class Geometry
 {
+    std::random_device rd;
+    std::mt19937 gen{rd()};
+    std::uniform_real_distribution<> runif{0.0, 1.0};
+    std::normal_distribution<> rnorm{0.0, 1.0};
+    std::uniform_int_distribution<> rid{1, 32767};
+    
 public:
     int MAX_NUM_ELLIPSE = 100000;
     int cell_number;
@@ -326,10 +332,21 @@ public:
 	    id = id + 1;
 	    //if ( id != 110 && id != 88 )
 	    {
-		double v1 = 1.47;
+		double v1 = 1.5;
+		//double v1 = 1.0;
 		double v2 = 0.0;
 		double u1 = 0.0;
 		double u2 = 1.0;
+		double phi = runif(gen)*PI;
+		double new_v1 = v1*cos(phi) - v2*sin(phi);
+		double new_v2 = v1*sin(phi) + v2*cos(phi);
+		double new_u1 = u1*cos(phi) - u2*sin(phi);
+		double new_u2 = u1*sin(phi) + u2*cos(phi);
+
+		v1 = new_v1;
+		v2 = new_v2;
+		u1 = new_u1;
+		u2 = new_u2;
 		//double a = sqrt(v1*v1 + v2*v2);
 		//double b = sqrt(u1*u1 + u2*u2);
 		//std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
@@ -721,17 +738,17 @@ public:
 		    std::cout << "total area does not add up! ID: "
 			      << it->ellipse.ellipse_id
 			      << "type: " << it->ellipse.type << "\n";
-		    std::cout << "total area: " << it->area
+		    std::cout << "polygon area: " << it->area
 			      << "sumed area: " << sum_area1 << "\n";
 		    getchar();
 		}
-		if ( fabs(sum_area2 - it->ellipse.area)/it->ellipse.area > 0.25 )
+		if ( fabs(sum_area2 - it->ellipse.area)/it->ellipse.area > 0.01 )
 		{
 		    std::cout << "total area does not add up! ID: "
 			      << it->ellipse.ellipse_id
 			      << "type: " << it->ellipse.type << "\n";
 		    std::cout << "ellipse area: " << it->ellipse.area
-			      << "sumed area: " << sum_area2
+			      << "sumed area: " << sum_area2 << " "
 			      << it->ellipse.a << " " << it->ellipse.b << "\n";
 		    getchar();
 		}
@@ -1332,18 +1349,17 @@ public:
 	    if ( voronoi_cell_list[k].cell_id < 8000 )
 	    {
 		Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
-		double aspect_ratio = converted_ellipse.a / converted_ellipse.b ;
 		fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
 		    voronoi_cell_list[k].ellipse.c1 << ", " << 
 		    voronoi_cell_list[k].ellipse.c2 << ", " << 
-		    voronoi_cell_list[k].ellipse.a << ", " <<
-		    voronoi_cell_list[k].ellipse.b << ", " <<
+		    voronoi_cell_list[k].ellipse.v1 << ", " <<
+		    voronoi_cell_list[k].ellipse.v2 << ", " <<
+		    voronoi_cell_list[k].ellipse.u1 << ", " <<
+		    voronoi_cell_list[k].ellipse.u2 << ", " <<
 		    converted_ellipse.a << ", " << 
 		    converted_ellipse.b << ", " << 
-		    converted_ellipse.v1 << ", " << 
-		    converted_ellipse.v2 << ", " << 
-		    voronoi_cell_list[k].ellipse.c1 + aspect_ratio*voronoi_cell_list[k].ellipse.v1 << ", " <<
-		    voronoi_cell_list[k].ellipse.c2 + aspect_ratio*voronoi_cell_list[k].ellipse.v2 << ", " <<
+		    voronoi_cell_list[k].ellipse.c1 + voronoi_cell_list[k].ellipse.v1 << ", " <<
+		    voronoi_cell_list[k].ellipse.c2 + voronoi_cell_list[k].ellipse.v2 << ", " <<
 		    voronoi_cell_list[k].ellipse.type << "\n";
 	    }
 	}
@@ -1861,22 +1877,93 @@ public:
     }
 
     double get_ell_sector_area(const Ellipse &ellipse, 
-			       const double theta1,
-			       const double theta2)
+			       double theta1,
+			       double theta2)
     {
 	double ell_area;
-	double new_theta1 = atan2(ellipse.a*sin(theta1), ellipse.b*cos(theta1));
-	double new_theta2 = atan2(ellipse.a*sin(theta2), ellipse.b*cos(theta2));
+	double theta0 = atan2(ellipse.v2, ellipse.v1);
 	if ( theta2 > PI )
 	{
-	    new_theta2 = new_theta2 + 2*PI;
+	    theta2 = theta2 - 2.0*PI;
 	}
-	//std::cout << "theta1 " << theta1 << "new theta1 " << new_theta1 << "\n";
-	//std::cout << "theta2 " << theta2 << "new theta2 " << new_theta2 << "\n";
+	double new_theta1 = PI + atan2(ellipse.a*sin(theta1-theta0), ellipse.b*cos(theta1-theta0));
+	double new_theta2 = PI + atan2(ellipse.a*sin(theta2-theta0), ellipse.b*cos(theta2-theta0));
+	/* if ( new_theta1 < 0.0 ) */
+	/* { */
+	/*     new_theta1 = new_theta1 + 2*PI; */
+	/* } */
+	/* if ( new_theta2 < 0.0 ) */
+	/* { */
+	/*     new_theta2 = new_theta2 + 2*PI; */
+	/* } */
+	std::cout << "theta0 " << theta0 << "\n";
+	std::cout << "theta1 " << theta1 << " new theta1 " << new_theta1 << "\n";
+	std::cout << "theta2 " << theta2 << " new theta2 " << new_theta2 << "\n";
 	ell_area = 0.5*ellipse.a*ellipse.b*fabs(new_theta1 - new_theta2);
+	if ( PI*ellipse.a*ellipse.b < 2.0*ell_area )
+	{
+	    ell_area = PI*ellipse.a*ellipse.b - ell_area;
+	}
+	std::cout << "ell_area " << ell_area << "\n";
+	
+	/* if ( theta2 < 0 ) */
+	/* { */
+	/*     theta2 = theta2 + 2*PI; */
+	/* } */
+	/* if ( theta1 < 0 ) */
+	/* { */
+	/*     theta1 = theta1 + 2*PI; */
+	/* } */
+	/* double tmp1 = F_theta(ellipse.a, ellipse.b, theta1); */
+	/* double tmp2 = F_theta(ellipse.a, ellipse.b, theta2); */
+	/* ell_area2 = tmp2 - tmp1; */
+	/* if ( theta2 < theta1 ) */
+	/* { */
+	/*     ell_area2 = PI*ellipse.a*ellipse.b + ell_area2; */
+	/* } */
+	/* std::cout << "theta1 " << theta1 << " F_theta1 " << tmp1 << "\n"; */
+	/* std::cout << "theta2 " << theta2 << " F_theta2 " << tmp2 << "\n"; */
+	/* std::cout << "ell_area1 " << ell_area1 << "ell_area2 " << ell_area2 << "\n"; */
+	/* getchar(); */
 	return ell_area;
     }
 
+    /* double F_theta(const double a, */
+    /* 		   const double b, */
+    /* 		   const double theta) */
+    /* { */
+    /* 	if ( theta == 0.5*PI ) */
+    /* 	{ */
+    /* 	    return 0.25*PI*a*b; */
+    /* 	} */
+    /* 	if ( theta == 1.5*PI ) */
+    /* 	{ */
+    /* 	    return 0.75*PI*a*b; */
+    /* 	} */
+    /* 	double tmp = .5*a*b*atan(a*tan(theta)/b); */
+    /* 	if ( theta < 0 || theta >= 2*PI ) */
+    /* 	{ */
+    /* 	    std::cout << "inside F_theta: theta out of range \n"; */
+    /* 	    getchar(); */
+    /* 	} */
+    /* 	else if ( theta < 0.5*PI ) */
+    /* 	{ */
+    /* 	    return tmp; */
+    /* 	} */
+    /* 	else if ( theta < 1.5*PI ) */
+    /* 	{ */
+    /* 	    return tmp + 0.25*PI*a*b; */
+    /* 	} */
+    /* 	else if ( theta < 2.0*PI ) */
+    /* 	{ */
+    /* 	    return tmp + 0.75*PI*a*b; */
+    /* 	} */
+    /* 	else */
+    /* 	{ */
+    /* 	    std::cout << "inside F_theta: theta out of range \n"; */
+    /* 	    getchar(); */
+    /* 	} */
+    /* } */
 };
 
 

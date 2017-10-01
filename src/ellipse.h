@@ -22,9 +22,9 @@ public:
     Ellipse(int id, double c1, double c2, double v1, double v2, double u1, double u2)
 	: ellipse_id(id), c1(c1), c2(c2), v1(v1), v2(v2), u1(u1), u2(u2)
 	{
-	    if (v1*u1 + v2*u2 != 0)
+	    if (abs(v1*u1 + v2*u2) > 1e-12)
 	    {
-		std::cout << "Elliplse error: eigenvectors not orthogonal \n";
+		std::cout << "Elliplse error: eigenvectors not orthogonal: " << (v1*u1 + v2*u2) << "\n";
 		getchar();
 	    }
 	    a = sqrt(v1*v1 + v2*v2);

@@ -140,14 +140,14 @@ public:
 			// 	<< oyi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 			// 	<< ", " << force_list[edge_id] << "\n";
 			foutput << geometry.voronoi_cell_list[k].cell_id << ", " << cx << ", " << cy << ", " 
-				<< cx + 60.0*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+				<< cx + 20.0*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
 				<< ", "
-				<< cy + 60*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< cy + 20*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 				<< ", " << force_list[edge_id] << "\n";
 			foutput2 << geometry.voronoi_cell_list[k].cell_id << ", " << cx << ", " << cy << ", " 
-				<< cx + 60.0*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+				<< cx + 20.0*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
 				<< ", "
-				<< cy + 60*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< cy + 20*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 				<< ", " << force_list2[edge_id] << "\n";
 			sum_force_x = sum_force_x +
 			    force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1 +
