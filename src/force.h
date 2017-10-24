@@ -22,13 +22,13 @@ public:
     double para_c = 2.0;
 
 public:    
-    int update_force_field(Geometry &geometry)
+    int update_force_field(Geometry &geometry, Parameters &params)
 	{
-	    compute_pressure(geometry);
-	    compute_force_per_edge(geometry);
+	    compute_pressure(geometry, params);
+	    compute_force_per_edge(geometry, params);
 	}
 
-    int compute_pressure(Geometry &geometry)
+    int compute_pressure(Geometry &geometry, Parameters &params)
 	{
 	    pressure_list.resize(geometry.voronoi_cell_list.size());
 	    for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
@@ -48,7 +48,7 @@ public:
 	    return 0;
 	}
 
-    int compute_force_per_edge(Geometry &geometry)
+    int compute_force_per_edge(Geometry &geometry, Parameters &params)
     	{
     	    force_list.resize(geometry.voronoi_edge_list.size());
     	    for ( int k=0; k<geometry.voronoi_edge_list.size(); k++ )
@@ -59,7 +59,7 @@ public:
     		    // contact force
     		    int cell_i = geometry.map_cell_id[edge.side_colors[0]];
     		    int cell_j = geometry.map_cell_id[edge.side_colors[1]];
-    		    force_list[k] = -0.5*edge.length*(pressure_list[cell_i] + 
+    		    force_list[k] = -0.5*params.eta*edge.length*(pressure_list[cell_i] + 
     			pressure_list[cell_j]);
     		}
     		else
@@ -78,35 +78,35 @@ public:
     		for ( int kk=0; kk<cell.edges.size(); kk++)
     		{
     		    int edge_id = cell.edges[kk].edge_id;
-    		    force_list2[edge_id] = force_list2[edge_id] 
-			+ para_c*cell.edges[kk].tri_sector_area/cell.area 
-			- para_c*cell.edges[kk].ell_sector_area/cell.ellipse.area;
+    		    force_list2[edge_id] = force_list2[edge_id] +
+			para_c*params.eta*(cell.edges[kk].tri_sector_area/cell.area -
+					   cell.edges[kk].ell_sector_area/cell.ellipse.area);
 		}
     	    }
     	    return 0;
     	}
 
-    int output_force_filed(Geometry &geometry, std::string file_index)
+    int output_force_filed(Geometry &geometry, std::string file_index, Parameters &params)
 	{
-	    std::ofstream foutput("out/force" + file_index + ".txt");
+	    std::ofstream foutput(params.output_dir + "/force" + file_index + ".txt");
 	    if(!foutput) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput2("out/force2" + file_index + ".txt");
+	    std::ofstream foutput2(params.output_dir + "/force2" + file_index + ".txt");
 	    if(!foutput2) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput_sum("out/sum_force" + file_index + ".txt");
+	    std::ofstream foutput_sum(params.output_dir + "/sum_force" + file_index + ".txt");
 	    if(!foutput_sum) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput_torque("out/torque" + file_index + ".txt");
+	    std::ofstream foutput_torque(params.output_dir + "/torque" + file_index + ".txt");
 	    if(!foutput_torque) 
 	    {
 		std::cout << "file open error.\n";
@@ -140,14 +140,14 @@ public:
 			// 	<< oyi + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 			// 	<< ", " << force_list[edge_id] << "\n";
 			foutput << geometry.voronoi_cell_list[k].cell_id << ", " << cx << ", " << cy << ", " 
-				<< cx + 20.0*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+				<< cx + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
 				<< ", "
-				<< cy + 20*force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< cy + force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 				<< ", " << force_list[edge_id] << "\n";
 			foutput2 << geometry.voronoi_cell_list[k].cell_id << ", " << cx << ", " << cy << ", " 
-				<< cx + 20.0*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
+				<< cx + force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1
 				<< ", "
-				<< cy + 20*force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
+				<< cy + force_list2[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n2
 				<< ", " << force_list2[edge_id] << "\n";
 			sum_force_x = sum_force_x +
 			    force_list[edge_id]*geometry.voronoi_cell_list[k].edges[kk].n1 +
@@ -162,13 +162,13 @@ public:
 			    *geometry.voronoi_cell_list[k].edges[kk].n1*(cy-oyi);
 		    }
 		    foutput_sum << geometry.voronoi_cell_list[k].cell_id << ", " << oxi << ", " << oyi << ", " 
-			     << oxi + 10*sum_force_x << ", " 
-			     << oyi + 10*sum_force_y << ", "
+			     << oxi + sum_force_x << ", " 
+			     << oyi + sum_force_y << ", "
 			     << sum_force_x << ", "
 			     << sum_force_y << "\n";
 		    foutput_torque << geometry.voronoi_cell_list[k].cell_id << ", " << oxi << ", " << oyi << ", " 
 			     << oxi << ", " 
-			     << oyi + 10*torque << ", "
+			     << oyi + torque << ", "
 			     << torque << "\n";
 		    //foutput << "\n";
 		}
@@ -180,7 +180,7 @@ public:
 	    return 0;
 	}
 
-    int output_cell_force_status(Geometry &geometry, std::string file_index)
+    int output_cell_force_status(Geometry &geometry, Parameters &params, std::string file_index)
 	{
 	    std::ofstream foutput("out/cell_force_status" + file_index + ".txt");
 	    if(!foutput) 
@@ -222,7 +222,6 @@ public:
 	    foutput.close();
 	    return 0;
 	}
-
 };
 
 

@@ -4,23 +4,20 @@
 #include "simulator.h"
 #include "force.h"
 #include "engine.h"
+#include "parameters.h"
 
 int Simulator::run(int process_id)
 {
-  // std::cout << "test atan2: " << atan2(0.0, 0.1) << "\n";
-  // getchar();
-
-  double t1, t2;
-
+  Parameters params;
+  params.init();
+  
   Geometry geometry;
-  geometry.init();
+  geometry.init(params);
 
   Force force;
-
   Engine engine;
-  //engine.one_step_solution(geometry, force);
-  engine.run(geometry, force, process_id);
 
+  engine.run(geometry, force, params, process_id);
   
   return 0;
 }

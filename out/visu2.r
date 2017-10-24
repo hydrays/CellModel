@@ -8,7 +8,7 @@ r0 <- 1.53
 ratioAll <- NULL
 
 ##for (file_index in seq(170, 172) )
-for (file_index in seq(100,10100,by=1) )
+for (file_index in seq(0,10100,by=1) )
 {
     cat(file_index, "\n")
     nodes <- read.csv(file=paste("cell_nodes", file_index, ".txt", sep=''), header=FALSE)
@@ -24,7 +24,7 @@ for (file_index in seq(100,10100,by=1) )
     ##eigensubset <- eigenshape[,1]>0
 
     type <- ellipses[,12]
-    ratio <- ellipses[type<10,6]/ellipses[type<10,7]
+    ratio <- ellipses[,8]/ellipses[,9]
     ratioAll <- c(ratioAll, sum(ratio>r0)/length(ratio))
     
     png(paste("ar", file_index, ".png", sep=''), height=600, width=800)
@@ -43,13 +43,8 @@ for (file_index in seq(100,10100,by=1) )
     abline(h=sum(ar<1.53)/length(ar), col='blue', lwd=4, lty=2)
     ##cat(file="meanar.txt", mean(ellipses[,6]/ellipses[,7]), '\n', append=T)
     dev.off()
-
-    if (file_index==480)
-    {
-        write.csv(ar, file="../../ar.csv")
-    }
     
-    png(paste("plot", file_index-100, ".png", sep=''),
+    png(paste("plot", file_index, ".png", sep=''),
         height=600, width=1200)
     par(mfrow=c(1,2))
     ##pdf(paste("plot", file_index, ".pdf", sep=''),
@@ -83,20 +78,20 @@ for (file_index in seq(100,10100,by=1) )
     ##        eigenshape[eigensubset,3],
     ##        eigenshape[eigensubset,8],
     ##        eigenshape[eigensubset,9], length=0.1, col='red')
-    ## arrows(ellipses[ratio>r0,2],
-    ##        ellipses[ratio>r0,3],
-    ##        ellipses[ratio>r0,10],
-    ##        ellipses[ratio>r0,11], length=0.1, col='gold')
-    ## arrows(ellipses[ratio<=r0,2],
-    ##        ellipses[ratio<=r0,3],
-    ##        ellipses[ratio<=r0,10],
-    ##        ellipses[ratio<=r0,11], length=0.1, col='blue')
+    arrows(ellipses[ratio>r0,2],
+           ellipses[ratio>r0,3],
+           ellipses[ratio>r0,10],
+           ellipses[ratio>r0,11], length=0.1, col='gold')
+    arrows(ellipses[ratio<=r0,2],
+           ellipses[ratio<=r0,3],
+           ellipses[ratio<=r0,10],
+           ellipses[ratio<=r0,11], length=0.1, col='blue')
     ##abline(h = c(Hmin, Hmax))
     ##abline(v = c(Lmin, Lmax))
     par(mar=c(14, 6, 12, 8))
     plot(ratioAll, col='black', xlim=c(0, 2000), ylim=c(0,1),
          xlab="time", ylab="percentage of elongated cells", cex.axis=1.5, cex.lab=1.5, type='l', lwd=2)
     abline(h=c(0.2, 0.4, 0.6, 0.8), lty=4, col='gray')
-    points(file_index-100+1, ratioAll[file_index-100+1], col='red', cex=1.5, pch=16)
+    points(file_index+1, ratioAll[file_index+1], col='red', cex=1.5, pch=16)
     dev.off()
 }

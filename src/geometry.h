@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <map>
 #include "ellipse.h"
+#include "parameters.h"
 
 #define PI 3.1415926535
 
@@ -45,10 +46,10 @@ struct BoundaryData
 	    L_min = L_min_value;
 	    L_max = L_max_value;
 	    H = H_value;
-	    int margin_n = 160;
-	    int margin_m = 160;
 	    int inner_n = 800;
 	    int inner_m = 800;
+	    int margin_n = 0.2*inner_n;
+	    int margin_m = 0.2*inner_m;
 	    n = inner_n + 2*margin_n;
 	    m = inner_m + 2*margin_m;
 	    res_x = (L_max - L_min)/inner_m;
@@ -73,7 +74,7 @@ struct BoundaryData
 		std::cout << "error: not enough marginal region. \n";
 		getchar();
 	    }
-	    std::cout << "Status: boundary data initialized. \n";
+	    //std::cout << "Status: boundary data initialized. \n";
 	}
 };
 
@@ -178,23 +179,23 @@ public:
     std::vector<Ellipse> new_ellipse_list;
     std::map<int,int> map_cell_id;
 
-    int init()
+    int init(Parameters &params)
     {
 	//boundary_data.set_boundary_data(18.0, 11.9);
 	//boundary_data.set_boundary_data(-15.0, 15.0, 10.0);
-	boundary_data.set_boundary_data(-20.0, 20.0, 18.0);
 	//boundary_data.set_boundary_data(25.0, 22.5);
 	//boundary_data.set_boundary_data(15.0, 10.0);
 	//boundary_data.set_boundary_data(36.0, 36.0);
 
-	init_ellipse_list();
+	init_ellipse_list(params);
 	cell_number = ellipse_list.size();
+
 	std::cout << "Status: ellipse list initialized: (num: " << ellipse_list.size() << ") \n";
 	//apply_periodic_boundary_condition_ellipse();
 	apply_mixed_boundary_condition_ellipse();
 	std::cout << "Status: ellipse extended: (num: " << ellipse_list.size() << ") \n";
 	//getchar();
-	ellipse_to_voronoi();
+	ellipse_to_voronoi(params);
 	update_map();
 
 	std::cout << "init sucess \n";
@@ -313,50 +314,64 @@ public:
 	return 0;
     }
 
-    int init_ellipse_list()
+    int init_ellipse_list(Parameters &params)
     {
-	//std::ifstream finit("initPos.txt");
-	std::ifstream finit("cellPos.txt");
+	std::ifstream finit(params.cell_position_file);
 	if(!finit) 
 	{
 	    std::cout << "file open error.\n";
 	    return -1; 
 	}
-	    
+
 	int id = 0;
 	double cx, cy;
+	double Lmin = 99999.0;
+	double Lmax = -99999.0;
+	double H = 0.0;
 	//std::string temp_str;
 	char temp_str;
 	while (finit >> cx >> temp_str >>  cy)
 	{
 	    id = id + 1;
-	    //if ( id != 110 && id != 88 )
-	    {
-		double v1 = 1.5;
-		//double v1 = 1.0;
-		double v2 = 0.0;
-		double u1 = 0.0;
-		double u2 = 1.0;
-		double phi = runif(gen)*PI;
-		double new_v1 = v1*cos(phi) - v2*sin(phi);
-		double new_v2 = v1*sin(phi) + v2*cos(phi);
-		double new_u1 = u1*cos(phi) - u2*sin(phi);
-		double new_u2 = u1*sin(phi) + u2*cos(phi);
+	    double v1 = params.a;
+	    //double v1 = 1.0;
+	    double v2 = 0.0;
+	    double u1 = 0.0;
+	    double u2 = params.b;
+	    double phi = runif(gen)*PI;
+	    double new_v1 = v1*cos(phi) - v2*sin(phi);
+	    double new_v2 = v1*sin(phi) + v2*cos(phi);
+	    double new_u1 = u1*cos(phi) - u2*sin(phi);
+	    double new_u2 = u1*sin(phi) + u2*cos(phi);
 
-		v1 = new_v1;
-		v2 = new_v2;
-		u1 = new_u1;
-		u2 = new_u2;
-		//double a = sqrt(v1*v1 + v2*v2);
-		//double b = sqrt(u1*u1 + u2*u2);
-		//std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
-		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
-		ellipse.area = PI*ellipse.a*ellipse.b;
-		ellipse.type = 1;
-		ellipse_list.push_back(ellipse);
+	    v1 = new_v1;
+	    v2 = new_v2;
+	    u1 = new_u1;
+	    u2 = new_u2;
+	    //double a = sqrt(v1*v1 + v2*v2);
+	    //double b = sqrt(u1*u1 + u2*u2);
+	    //std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
+	    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
+	    ellipse.area = PI*ellipse.a*ellipse.b;
+	    ellipse.type = 1;
+	    ellipse_list.push_back(ellipse);
+
+	    if ( cx > Lmax )
+	    {
+		Lmax = cx;
+	    }
+	    if ( cx < Lmin )
+	    {
+		Lmin = cx;
+	    }
+	    if ( fabs(cy) > H )
+	    {
+		H = fabs(cy);
 	    }
 	}
 
+	boundary_data.set_boundary_data(Lmin-0.1, Lmax+0.1, H+0.1);
+	
 	// add boundary ellipses
 	int nbcells = (int)boundary_data.H/1.0;
 	for ( int i=0; i<nbcells; i++ )
@@ -422,7 +437,7 @@ public:
 	return 0;
     }
 
-    int ellipse_to_voronoi()
+    int ellipse_to_voronoi(Parameters &params)
     {
 	int n = boundary_data.n;
 	int m = boundary_data.m;
@@ -453,7 +468,7 @@ public:
 	//output_node_list();
 	//output_edge_list();
 	//write_ellipse_tofile();
-	refine_cell_list();
+	refine_cell_list(params);
 
 	/* write_ellipse_tofile(); */
 	/* output_node_list(); */
@@ -563,7 +578,7 @@ public:
 	return new_ellipse;
     }
 
-    int refine_cell_list()
+    int refine_cell_list(Parameters &params) throw(int)
     {
 	//for ( int k=0; k<voronoi_cell_list.size(); k++ )	    
 	//std::cout << "refining \n";
@@ -598,7 +613,7 @@ public:
 		if ( it->cell_id < 8000 )
 		{
 		    std::cout << "remove wrong cell? **** \n";
-		    output_cell(*it);
+		    output_cell(*it, params);
 		    for ( int kk=0; kk<edges.size(); kk++ )
 		    {
 			if ( voronoi_edge_list[edges[kk]].side_colors.size() != 2 )
@@ -613,11 +628,12 @@ public:
 				      << "(" << voronoi_edge_list[edges[kk]].x2
 				      << ", " << voronoi_edge_list[edges[kk]].y2
 				      << ") )\n";
-			    output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id1]);
-			    output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id2]);
+			    output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id1], params);
+			    output_node(voronoi_node_list[voronoi_edge_list[edges[kk]].node_id2], params);
 			}
 		    }
-		    getchar();
+		    throw(10);
+		    //getchar();
 		}		    
 		voronoi_cell_list.erase(it);
 		//voronoi_cell_list[k].area = -1.0;
@@ -672,7 +688,7 @@ public:
 			    x2 << "edge xy " << current_edge.x1 << " " <<
 			    current_edge.x2 << "size: " << it->edge_set.size() << "\n";
 			    
-			output_cell(*it);
+			output_cell(*it, params);
 			getchar();
 		    }
 
@@ -715,7 +731,7 @@ public:
 			x2 << "edge xy " << current_edge.x1 << " " <<
 			current_edge.x2 << "size: " << it->edge_set.size() << "\n";
 			
-		    output_cell(*it);
+		    output_cell(*it, params);
 		    getchar();
 		}
 
@@ -740,9 +756,10 @@ public:
 			      << "type: " << it->ellipse.type << "\n";
 		    std::cout << "polygon area: " << it->area
 			      << "sumed area: " << sum_area1 << "\n";
-		    getchar();
+		    //getchar();
+		    throw(40);
 		}
-		if ( fabs(sum_area2 - it->ellipse.area)/it->ellipse.area > 0.01 )
+		if ( fabs(sum_area2 - it->ellipse.area)/it->ellipse.area > 0.25 )
 		{
 		    std::cout << "total area does not add up! ID: "
 			      << it->ellipse.ellipse_id
@@ -750,7 +767,8 @@ public:
 		    std::cout << "ellipse area: " << it->ellipse.area
 			      << "sumed area: " << sum_area2 << " "
 			      << it->ellipse.a << " " << it->ellipse.b << "\n";
-		    getchar();
+		    //getchar();
+		    throw(41);
 		}
 		++it;
 	    }
@@ -1335,9 +1353,9 @@ public:
 	return 0;
     }
 
-    int output_ellipse_list(std::string file_index)
+    int output_ellipse_list(std::string file_index, Parameters &params)
     {
-	std::ofstream fellipse("out/ellipses" + file_index + ".txt");
+	std::ofstream fellipse(params.output_dir + "/ellipses" + file_index + ".txt");
 	if(!fellipse) 
 	{
 	    std::cout << "file open error.\n";
@@ -1368,9 +1386,9 @@ public:
 	return 0;
     }
 
-    int output_cell_position()
+    int output_cell_position(Parameters &params)
     {
-	std::ofstream fout("out/cellPos.txt");
+	std::ofstream fout(params.output_dir + "/cellPos.txt");
 	if(!fout) 
 	{
 	    std::cout << "file open error.\n";
@@ -1390,9 +1408,9 @@ public:
 	return 0;
     }
 
-    int write_ellipse_tofile()
+    int write_ellipse_tofile(Parameters &params)
     {
-	std::ofstream fellipse("out/ellipses.txt");
+	std::ofstream fellipse(params.output_dir + "/ellipses.txt");
 	if(!fellipse) 
 	{
 	    std::cout << "file open error.\n";
@@ -1416,9 +1434,9 @@ public:
 	return 0;
     }
 
-    int output_new_ellipse_list()
+    int output_new_ellipse_list(Parameters &params)
     {
-	std::ofstream fellipse("out/new_ellipses.txt");
+	std::ofstream fellipse(params.output_dir + "/new_ellipses.txt");
 	if(!fellipse) 
 	{
 	    std::cout << "file open error.\n";
@@ -1445,10 +1463,11 @@ public:
     int output_partition_table(const int n, const int m, 
 			       const int* distance_table, 
 			       const int* partition_table, 
-			       const std::vector<PixelNode> &node_list)
+			       const std::vector<PixelNode> &node_list,
+			       Parameters &params)
     {
-	std::ofstream fout("out/partition_table.txt");
-	std::ofstream fout2("out/distance_table.txt");
+	std::ofstream fout(params.output_dir + "/partition_table.txt");
+	std::ofstream fout2(params.output_dir + "/distance_table.txt");
 	if(!fout || !fout2) 
 	{
 	    std::cout << "file open error.\n";
@@ -1495,9 +1514,9 @@ public:
 	return 0;
     }
 
-    int output_node_list()
+    int output_node_list(Parameters &params)
     {
-	std::ofstream fnode("out/nodes.txt");
+	std::ofstream fnode(params.output_dir + "/nodes.txt");
 	if(!fnode) 
 	{
 	    std::cout << "file open error.\n";
@@ -1531,7 +1550,7 @@ public:
 	return 0;
     }
 
-    int output_node(VoronoiNode &node)
+    int output_node(VoronoiNode &node, Parameters &params)
     {
 	std::cout << "output node: "
 		  << node.x << ","
@@ -1545,11 +1564,11 @@ public:
 	return 0;
     }
 
-    int output_cell_list(std::string file_index)
+    int output_cell_list(std::string file_index, Parameters &params)
     {
-	std::ofstream fnode("out/cell_nodes" + file_index + ".txt");
-	std::ofstream fedge("out/cell_edges" + file_index + ".txt");
-	std::ofstream farea("out/cell_area" + file_index + ".txt");
+	std::ofstream fnode(params.output_dir + "/cell_nodes" + file_index + ".txt");
+	std::ofstream fedge(params.output_dir + "/cell_edges" + file_index + ".txt");
+	std::ofstream farea(params.output_dir + "/cell_area" + file_index + ".txt");
 	if(!fnode || !fedge || !farea) 
 	{
 	    std::cout << "file open error.\n";
@@ -1625,7 +1644,7 @@ public:
 	return 0;
     }
 
-    int output_cell(VoronoiCell &cell)
+    int output_cell(VoronoiCell &cell, Parameters &params)
     {
 	std::cout << "Cell " << cell.cell_id
 		  << " " << cell.c1 << " " << cell.c2 << "\n node_set: ";
@@ -1658,9 +1677,9 @@ public:
 	return 0;
     }
 
-    int output_edge_list()
+    int output_edge_list(Parameters &params)
     {
-	std::ofstream fedge("out/edges.txt");
+	std::ofstream fedge(params.output_dir + "/edges.txt");
 	if(!fedge) 
 	{
 	    std::cout << "file open error.\n";
@@ -1896,75 +1915,17 @@ public:
 	/* { */
 	/*     new_theta2 = new_theta2 + 2*PI; */
 	/* } */
-	std::cout << "theta0 " << theta0 << "\n";
-	std::cout << "theta1 " << theta1 << " new theta1 " << new_theta1 << "\n";
-	std::cout << "theta2 " << theta2 << " new theta2 " << new_theta2 << "\n";
+	/* std::cout << "theta0 " << theta0 << "\n"; */
+	/* std::cout << "theta1 " << theta1 << " new theta1 " << new_theta1 << "\n"; */
+	/* std::cout << "theta2 " << theta2 << " new theta2 " << new_theta2 << "\n"; */
 	ell_area = 0.5*ellipse.a*ellipse.b*fabs(new_theta1 - new_theta2);
 	if ( PI*ellipse.a*ellipse.b < 2.0*ell_area )
 	{
 	    ell_area = PI*ellipse.a*ellipse.b - ell_area;
 	}
-	std::cout << "ell_area " << ell_area << "\n";
-	
-	/* if ( theta2 < 0 ) */
-	/* { */
-	/*     theta2 = theta2 + 2*PI; */
-	/* } */
-	/* if ( theta1 < 0 ) */
-	/* { */
-	/*     theta1 = theta1 + 2*PI; */
-	/* } */
-	/* double tmp1 = F_theta(ellipse.a, ellipse.b, theta1); */
-	/* double tmp2 = F_theta(ellipse.a, ellipse.b, theta2); */
-	/* ell_area2 = tmp2 - tmp1; */
-	/* if ( theta2 < theta1 ) */
-	/* { */
-	/*     ell_area2 = PI*ellipse.a*ellipse.b + ell_area2; */
-	/* } */
-	/* std::cout << "theta1 " << theta1 << " F_theta1 " << tmp1 << "\n"; */
-	/* std::cout << "theta2 " << theta2 << " F_theta2 " << tmp2 << "\n"; */
-	/* std::cout << "ell_area1 " << ell_area1 << "ell_area2 " << ell_area2 << "\n"; */
-	/* getchar(); */
+	//std::cout << "ell_area " << ell_area << "\n";
 	return ell_area;
     }
-
-    /* double F_theta(const double a, */
-    /* 		   const double b, */
-    /* 		   const double theta) */
-    /* { */
-    /* 	if ( theta == 0.5*PI ) */
-    /* 	{ */
-    /* 	    return 0.25*PI*a*b; */
-    /* 	} */
-    /* 	if ( theta == 1.5*PI ) */
-    /* 	{ */
-    /* 	    return 0.75*PI*a*b; */
-    /* 	} */
-    /* 	double tmp = .5*a*b*atan(a*tan(theta)/b); */
-    /* 	if ( theta < 0 || theta >= 2*PI ) */
-    /* 	{ */
-    /* 	    std::cout << "inside F_theta: theta out of range \n"; */
-    /* 	    getchar(); */
-    /* 	} */
-    /* 	else if ( theta < 0.5*PI ) */
-    /* 	{ */
-    /* 	    return tmp; */
-    /* 	} */
-    /* 	else if ( theta < 1.5*PI ) */
-    /* 	{ */
-    /* 	    return tmp + 0.25*PI*a*b; */
-    /* 	} */
-    /* 	else if ( theta < 2.0*PI ) */
-    /* 	{ */
-    /* 	    return tmp + 0.75*PI*a*b; */
-    /* 	} */
-    /* 	else */
-    /* 	{ */
-    /* 	    std::cout << "inside F_theta: theta out of range \n"; */
-    /* 	    getchar(); */
-    /* 	} */
-    /* } */
 };
-
 
 #endif //GEOMETRY
