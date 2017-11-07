@@ -114,7 +114,7 @@ public:
 	{
 	    div_info.div_index = rid(gen) % geometry.voronoi_cell_list.size();
 	    if ( geometry.voronoi_cell_list[div_info.div_index].cell_id < 8000 &&
-		 geometry.voronoi_cell_list[div_info.div_index].ellipse.type == 1)
+		 geometry.voronoi_cell_list[div_info.div_index].ellipse.type < 10)
 	    {
 		std::cout << "dividing cell: " << div_info.div_index << "\n";
 		div_info.counter = div_info.counter + 1;
@@ -130,18 +130,26 @@ public:
 		Ellipse converted_ellipse =
 		    geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[div_info.div_index]);	
 		double s = converted_ellipse.a/converted_ellipse.b - params.q0;
-	    
-		if ( s <= 0.0 ) // rotate
-		//if ( 0 )
+
+		if ( geometry.voronoi_cell_list[div_info.div_index].ellipse.type == 2 ) // rotate
 		{
 		    dividing_angle = runif(gen)*PI;
 		    div_info.type = 0;
 		}
 		else
 		{
-		    dividing_angle = atan2(converted_ellipse.v2, converted_ellipse.v1);
-		    dividing_angle = dividing_angle + rnorm(gen)*PI*15.37/180;
-		    div_info.type = 1;
+		    if ( s <= 0.0 ) // rotate
+			//if ( 0 )
+		    {
+			dividing_angle = runif(gen)*PI;
+			div_info.type = 0;
+		    }
+		    else
+		    {
+			dividing_angle = atan2(converted_ellipse.v2, converted_ellipse.v1);
+			dividing_angle = dividing_angle + rnorm(gen)*PI*15.37/180;
+			div_info.type = 1;
+		    }
 		}
 		div_info.dividing_angle = dividing_angle;
 		div_info.x = origin_c1;
@@ -155,8 +163,8 @@ public:
 		}
 		else
 		{
-		    new_ellipse.c1 = origin_c1 + 0.35*cos(dividing_angle); 
-		    new_ellipse.c2 = origin_c2 + 0.35*sin(dividing_angle); 
+		    new_ellipse.c1 = origin_c1 + 0.5*cos(dividing_angle); 
+		    new_ellipse.c2 = origin_c2 + 0.5*sin(dividing_angle); 
 		    geometry.voronoi_cell_list[div_info.div_index].ellipse.c1 = origin_c1 - 0.5*cos(dividing_angle);
 		    geometry.voronoi_cell_list[div_info.div_index].ellipse.c2 = origin_c2 - 0.5*sin(dividing_angle);
 		}
@@ -226,9 +234,9 @@ public:
 	for ( int k=0; k<geometry.voronoi_cell_list.size(); k++ )
 	{
 	    //geometry.output_cell(geometry.voronoi_cell_list[k]);
-	    if ( geometry.voronoi_cell_list[k].cell_id < 8000 &&
-		 geometry.voronoi_cell_list[k].ellipse.type == 1 )
-		//if (geometry.voronoi_cell_list[k].cell_id == 1)
+	    /* if ( geometry.voronoi_cell_list[k].cell_id < 8000 && */
+	    /* 	 geometry.voronoi_cell_list[k].ellipse.type < 10 ) */
+	    if (geometry.voronoi_cell_list[k].ellipse.type == 1)
 	    {
 		total_counter = total_counter + 1.0;
 		Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
@@ -356,7 +364,7 @@ public:
 		    L_max = L_max + geometry.voronoi_cell_list[k].ellipse.c1;
 		    L_max_counter = L_max_counter + 1;
 		}
-		else if ( geometry.voronoi_cell_list[k].ellipse.type == 1 )
+		else if ( geometry.voronoi_cell_list[k].ellipse.type < 10 )
 		{
 		    double dist_right = L_max_old - geometry.voronoi_cell_list[k].ellipse.c1;
 		    double dist_left = geometry.voronoi_cell_list[k].ellipse.c1 - L_min_old;
@@ -450,7 +458,8 @@ public:
 		
 		if ( geometry.voronoi_cell_list[k].ellipse.type == 1 )
 		{
-		    double d_phi = 5.0*torque*params.dt;
+		    //double d_phi = 5.0*torque*params.dt;
+		    double d_phi = 0.0;
 		    double v1, v2;
 		    double u1, u2;
 		    v1 = geometry.voronoi_cell_list[k].ellipse.v1;

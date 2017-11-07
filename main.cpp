@@ -11,7 +11,7 @@ int main()
 	return -1; 
     }
 
-    for ( int process_id=0; process_id < 5; process_id++ )
+    for ( int process_id=0; process_id < 50; process_id++ )
     {
 	int status = 1;
 	try

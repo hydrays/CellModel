@@ -101,6 +101,7 @@ struct VoronoiEdge
     double tri_sector_area;
     double ell_sector_area;
     std::vector<int> side_colors;
+
 VoronoiEdge(int edge_id, int id1, int id2)
 : edge_id(edge_id), node_id1(id1), node_id2(id2)
 	{
@@ -333,28 +334,43 @@ public:
 	while (finit >> cx >> temp_str >>  cy)
 	{
 	    id = id + 1;
-	    double v1 = params.a;
-	    //double v1 = 1.0;
-	    double v2 = 0.0;
-	    double u1 = 0.0;
-	    double u2 = params.b;
-	    double phi = runif(gen)*PI;
-	    double new_v1 = v1*cos(phi) - v2*sin(phi);
-	    double new_v2 = v1*sin(phi) + v2*cos(phi);
-	    double new_u1 = u1*cos(phi) - u2*sin(phi);
-	    double new_u2 = u1*sin(phi) + u2*cos(phi);
-
-	    v1 = new_v1;
-	    v2 = new_v2;
-	    u1 = new_u1;
-	    u2 = new_u2;
-	    //double a = sqrt(v1*v1 + v2*v2);
-	    //double b = sqrt(u1*u1 + u2*u2);
-	    //std::cout << " > ellipse: " << cx << " " << cy << " " << ellipse_list.size() << "\n";
-	    Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
-	    ellipse.area = PI*ellipse.a*ellipse.b;
-	    ellipse.type = 1;
-	    ellipse_list.push_back(ellipse);
+	    double u_braf = runif(gen);
+	    if ( u_braf < params.braf_mosaic_percentage )
+	    {
+		double v1 = params.a_braf;
+		double v2 = 0.0;
+		double u1 = 0.0;
+		double u2 = params.b_braf;
+		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
+		ellipse.area = PI*ellipse.a*ellipse.b;
+		ellipse.type = 2;
+		ellipse_list.push_back(ellipse);
+	    }
+	    else
+	    {
+		double v1 = params.a;
+		//double v1 = 1.0;
+		double v2 = 0.0;
+		double u1 = 0.0;
+		double u2 = params.b;
+		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
+		ellipse.area = PI*ellipse.a*ellipse.b;
+		ellipse.type = 1;
+		ellipse_list.push_back(ellipse);
+	    }
+	    /* double phi = runif(gen)*PI; */
+	    /* double new_v1 = v1*cos(phi) - v2*sin(phi); */
+	    /* double new_v2 = v1*sin(phi) + v2*cos(phi); */
+	    /* double new_u1 = u1*cos(phi) - u2*sin(phi); */
+	    /* double new_u2 = u1*sin(phi) + u2*cos(phi); */
+	    /* v1 = new_v1; */
+	    /* v2 = new_v2; */
+	    /* u1 = new_u1; */
+	    /* u2 = new_u2; */
+	    /* Ellipse ellipse(id, cx, cy, v1, v2, u1, u2); */
+	    /* ellipse.area = PI*ellipse.a*ellipse.b; */
+	    /* ellipse.type = 1; */
+	    /* ellipse_list.push_back(ellipse); */
 
 	    if ( cx > Lmax )
 	    {
