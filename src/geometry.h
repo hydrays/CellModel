@@ -341,6 +341,15 @@ public:
 		double v2 = 0.0;
 		double u1 = 0.0;
 		double u2 = params.b_braf;
+		double phi = runif(gen)*PI;
+		double new_v1 = v1*cos(phi) - v2*sin(phi);
+		double new_v2 = v1*sin(phi) + v2*cos(phi);
+		double new_u1 = u1*cos(phi) - u2*sin(phi);
+		double new_u2 = u1*sin(phi) + u2*cos(phi);
+		v1 = new_v1;
+		v2 = new_v2;
+		u1 = new_u1;
+		u2 = new_u2;
 		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 		ellipse.area = PI*ellipse.a*ellipse.b;
 		ellipse.type = 2;
@@ -353,20 +362,20 @@ public:
 		double v2 = 0.0;
 		double u1 = 0.0;
 		double u2 = params.b;
+		double phi = runif(gen)*PI;
+		double new_v1 = v1*cos(phi) - v2*sin(phi);
+		double new_v2 = v1*sin(phi) + v2*cos(phi);
+		double new_u1 = u1*cos(phi) - u2*sin(phi);
+		double new_u2 = u1*sin(phi) + u2*cos(phi);
+		v1 = new_v1;
+		v2 = new_v2;
+		u1 = new_u1;
+		u2 = new_u2;
 		Ellipse ellipse(id, cx, cy, v1, v2, u1, u2);
 		ellipse.area = PI*ellipse.a*ellipse.b;
 		ellipse.type = 1;
 		ellipse_list.push_back(ellipse);
 	    }
-	    /* double phi = runif(gen)*PI; */
-	    /* double new_v1 = v1*cos(phi) - v2*sin(phi); */
-	    /* double new_v2 = v1*sin(phi) + v2*cos(phi); */
-	    /* double new_u1 = u1*cos(phi) - u2*sin(phi); */
-	    /* double new_u2 = u1*sin(phi) + u2*cos(phi); */
-	    /* v1 = new_v1; */
-	    /* v2 = new_v2; */
-	    /* u1 = new_u1; */
-	    /* u2 = new_u2; */
 	    /* Ellipse ellipse(id, cx, cy, v1, v2, u1, u2); */
 	    /* ellipse.area = PI*ellipse.a*ellipse.b; */
 	    /* ellipse.type = 1; */
@@ -1384,17 +1393,31 @@ public:
 	    {
 		Ellipse converted_ellipse = voronoi_to_ellipse(voronoi_cell_list[k]);
 		fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " <<
-		    voronoi_cell_list[k].ellipse.c1 << ", " << 
-		    voronoi_cell_list[k].ellipse.c2 << ", " << 
-		    voronoi_cell_list[k].ellipse.v1 << ", " <<
-		    voronoi_cell_list[k].ellipse.v2 << ", " <<
-		    voronoi_cell_list[k].ellipse.u1 << ", " <<
-		    voronoi_cell_list[k].ellipse.u2 << ", " <<
+		    converted_ellipse.c1 << ", " << 
+		    converted_ellipse.c2 << ", " << 
+		    converted_ellipse.v1 << ", " <<
+		    converted_ellipse.v2 << ", " <<
+		    converted_ellipse.u1 << ", " <<
+		    converted_ellipse.u2 << ", " <<
 		    converted_ellipse.a << ", " << 
 		    converted_ellipse.b << ", " << 
-		    voronoi_cell_list[k].ellipse.c1 + voronoi_cell_list[k].ellipse.v1 << ", " <<
-		    voronoi_cell_list[k].ellipse.c2 + voronoi_cell_list[k].ellipse.v2 << ", " <<
+		    converted_ellipse.c1 + converted_ellipse.v1 << ", " <<
+		    converted_ellipse.c2 + converted_ellipse.v2 << ", " <<
 		    voronoi_cell_list[k].ellipse.type << "\n";
+
+		/* fellipse << voronoi_cell_list[k].ellipse.ellipse_id << ", " << */
+		/*     voronoi_cell_list[k].ellipse.c1 << ", " <<  */
+		/*     voronoi_cell_list[k].ellipse.c2 << ", " <<  */
+		/*     voronoi_cell_list[k].ellipse.v1 << ", " << */
+		/*     voronoi_cell_list[k].ellipse.v2 << ", " << */
+		/*     voronoi_cell_list[k].ellipse.u1 << ", " << */
+		/*     voronoi_cell_list[k].ellipse.u2 << ", " << */
+		/*     converted_ellipse.a << ", " <<  */
+		/*     converted_ellipse.b << ", " <<  */
+		/*     voronoi_cell_list[k].ellipse.c1 + voronoi_cell_list[k].ellipse.v1 << ", " << */
+		/*     voronoi_cell_list[k].ellipse.c2 + voronoi_cell_list[k].ellipse.v2 << ", " << */
+		/*     voronoi_cell_list[k].ellipse.type << "\n"; */
+		
 	    }
 	}
 

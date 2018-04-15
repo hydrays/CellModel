@@ -17,6 +17,7 @@ public:
     int Nstep;
     double dt;
     double eta;    
+    int two_population_model;
     double q0;
     double a, b;
     double a_braf, b_braf;
@@ -61,6 +62,9 @@ public:
 	    eta = pTree.get<double>("main.eta");
 	    std::cout << "eta: " << eta << std::endl;
 	    
+	    two_population_model = pTree.get<int>("main.two_population_model");
+	    std::cout << "two_population_model: " << two_population_model << std::endl;
+
 	    q0 = pTree.get<double>("main.q0");
 	    std::cout << "q0: " << q0 << std::endl;
 

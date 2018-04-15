@@ -138,7 +138,7 @@ public:
 		}
 		else
 		{
-		    if ( s <= 0.0 ) // rotate
+		    if ( params.two_population_model==1 && s<=0.0 ) // rotate
 			//if ( 0 )
 		    {
 			dividing_angle = runif(gen)*PI;
@@ -236,14 +236,24 @@ public:
 	    //geometry.output_cell(geometry.voronoi_cell_list[k]);
 	    /* if ( geometry.voronoi_cell_list[k].cell_id < 8000 && */
 	    /* 	 geometry.voronoi_cell_list[k].ellipse.type < 10 ) */
-	    if (geometry.voronoi_cell_list[k].ellipse.type == 1)
+	    if ( geometry.voronoi_cell_list[k].cell_id < 8000 &&
+		 geometry.voronoi_cell_list[k].ellipse.type == 1)
 	    {
 		total_counter = total_counter + 1.0;
 		Ellipse converted_ellipse = geometry.voronoi_to_ellipse(geometry.voronoi_cell_list[k]);
-		//double phi = atan(abs(converted_ellipse.v2/converted_ellipse.v1));
-		double phi = atan(fabs(geometry.voronoi_cell_list[k].ellipse.v2/
-				       geometry.voronoi_cell_list[k].ellipse.v1));
+		double phi;
+		//double phi = atan(fabs(geometry.voronoi_cell_list[k].ellipse.v2/
+		//		       geometry.voronoi_cell_list[k].ellipse.v1));
+		if ( params.two_population_model==1 && converted_ellipse.a/converted_ellipse.b < params.q0 )
+		{
+		    phi = runif(gen)*PI*0.5;
+		}
+		else
+		{
+		    phi = atan(fabs(converted_ellipse.v2/converted_ellipse.v1));
+		}
 		A = A + sin(phi) - cos(phi);
+		//printf("v1: %f; v2: %f, phi %f \n", converted_ellipse.v1, converted_ellipse.v2, phi);
 		if ( converted_ellipse.a / converted_ellipse.b > params.q0 )
 		{
 		    ratio = ratio + 1.0;
@@ -252,7 +262,7 @@ public:
 	}
 	ratio = ratio / total_counter;
 	A = A / total_counter;
-	
+	//printf("total_counter: %f; A: %f \n", total_counter, A);
 	sys_info.ratio = ratio;
 	sys_info.A = A;
 	return 0;
@@ -328,8 +338,8 @@ public:
 		    if ( geometry.voronoi_cell_list[k].ellipse.type == 10 )
 		    {
 			boundary_force1_y = boundary_force1_y +
-			    force.force_list[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2) +
-			    force.force_list2[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2);
+			    force.force_list[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2) +
+			    force.force_list2[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2);
 			/* sigma11 = sigma11 + force.force_list[edge_id]*cos(theta)*cos(theta); */
 			/* sigma12 = sigma12 + force.force_list[edge_id]*cos(theta)*sin(theta); */
 			/* sigma21 = sigma21 + force.force_list[edge_id]*sin(theta)*cos(theta); */
@@ -338,15 +348,15 @@ public:
 		    else if ( geometry.voronoi_cell_list[k].ellipse.type == 20 )
 		    {
 			boundary_force2_y = boundary_force2_y +
-			    force.force_list[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2) +
-			    force.force_list2[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2);
+			    force.force_list[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2) +
+			    force.force_list2[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2);
 		    }
 		    else
 		    {
 			external_force_y = external_force_y +
-			    //force.force_list[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2);
-			    force.force_list[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2) +
-			    force.force_list2[edge_id]*abs(geometry.voronoi_cell_list[k].edges[kk].n2);
+			    //force.force_list[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2);
+			    force.force_list[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2) +
+			    force.force_list2[edge_id]*fabs(geometry.voronoi_cell_list[k].edges[kk].n2);
 		    }
 		}
 		// boundary force
@@ -415,6 +425,7 @@ public:
 		/*     double new_u1, new_u2; */
 		/*     double a, b, new_a, new_b; */
 		/*     double aspect_ratio, new_aspect_ratio; */
+		/*     double F_signal, e0; */
 		
 		/*     v1 = geometry.voronoi_cell_list[k].ellipse.v1; */
 		/*     v2 = geometry.voronoi_cell_list[k].ellipse.v2; */
@@ -425,8 +436,11 @@ public:
 		/*     a = sqrt(v1*v1 + v2*v2); */
 		/*     b = sqrt(u1*u1 + u2*u2); */
 		/*     aspect_ratio = a/b; */
-		/*     new_aspect_ratio = aspect_ratio + dt*(F_signal * fabs(v1)/sqrt(v1*v1 + v2*v2) - */
-		/*     					      (aspect_ratio - e0)); */
+		/*     F_signal = params.stretching_force*0.1; */
+		/*     e0 = 1.0; */
+		/*     new_aspect_ratio = aspect_ratio + */
+		/* 	params.dt*(F_signal * fabs(v1)/sqrt(v1*v1 + v2*v2) - */
+		/* 		   (aspect_ratio - e0)); */
 		/*     if ( new_aspect_ratio < 1 ) */
 		/*     { */
 		/*     	new_aspect_ratio = 1.0; */
@@ -440,7 +454,7 @@ public:
 
 		/*     /\* std::cout << k << " " << new_a << " " << new_aspect_ratio << "\n"; *\/ */
 		/*     //rotation */
-		/*     double d_phi = 0.25*torque*dt; */
+		/*     double d_phi = 25.0*torque*params.dt + 0.5*rnorm(gen); */
 		/*     v1 = new_v1; */
 		/*     v2 = new_v2; */
 		/*     u1 = new_u1; */
@@ -458,8 +472,8 @@ public:
 		
 		if ( geometry.voronoi_cell_list[k].ellipse.type == 1 )
 		{
-		    //double d_phi = 5.0*torque*params.dt;
-		    double d_phi = 0.0;
+		    double d_phi = 10.0*torque*params.dt;// + 0.1*rnorm(gen);
+		    //double d_phi = 0.0;
 		    double v1, v2;
 		    double u1, u2;
 		    v1 = geometry.voronoi_cell_list[k].ellipse.v1;
