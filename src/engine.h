@@ -40,6 +40,10 @@ class Engine
     std::uniform_real_distribution<> runif{0.0, 1.0};
     std::normal_distribution<> rnorm{0.0, 1.0};
     std::uniform_int_distribution<> rid{1, 32767};
+    double p0 = 0.6;
+    double sig = 0.0;
+    double s1 = 0.0;
+    double s2 = 0.0;
     
 public:    
     int run(Geometry &geometry, Force &force, Parameters &params, int process_id)
@@ -81,7 +85,8 @@ public:
 		    << div_info.type << ", "
 		    << sys_info.ratio << ", "
 		    << sys_info.A << ", "
-		    << div_info.dividing_angle << "\n";
+		    << div_info.dividing_angle << ", "
+		    << sig << "\n";
 	    foutput.flush();
 	    
 	    //geometry.apply_periodic_boundary_condition_voronoi();
@@ -147,7 +152,7 @@ public:
 		    else
 		    {
 			dividing_angle = atan2(converted_ellipse.v2, converted_ellipse.v1);
-			dividing_angle = dividing_angle + rnorm(gen)*PI*15.37/180;
+			dividing_angle = dividing_angle;// + rnorm(gen)*PI*15.37/180;
 			div_info.type = 1;
 		    }
 		}
@@ -175,6 +180,11 @@ public:
 		new_cell.ellipse = new_ellipse;
 		new_cell.cell_id = new_ellipse.ellipse_id;
 		geometry.voronoi_cell_list.push_back(new_cell);
+
+		// compute feedback signal
+		s1 = s1 + fabs(cos(dividing_angle));
+		s2 = s2 + fabs(sin(dividing_angle));
+		sig = (1-p0)*s1 - p0*s2;
 	    }
 	    else
 	    {
@@ -360,16 +370,34 @@ public:
 		    }
 		}
 		// boundary force
+		double F;
+		if (params.feedback == 0)
+		{
+		    F = params.stretching_force;
+		}
+		else if (params.feedback == 1)
+		{
+		    F = params.stretching_force - params.alpha*sig/(1.0 + fabs(sig));
+		    if ( F < 0.0 )
+		    {
+			F = 0.0;
+		    }
+		}
+		else
+		{
+		    printf("feedback value can only be 1 and 0...exit!\n");
+		    getchar();
+		}
 		if ( geometry.voronoi_cell_list[k].ellipse.type == 10 )
 		{
-		    sum_force3_x = -params.stretching_force -
+		    sum_force3_x = -F -
 			2.0*params.eta*(geometry.voronoi_cell_list[k].ellipse.c1 - L_min_old);
 		    L_min = L_min + geometry.voronoi_cell_list[k].ellipse.c1;
 		    L_min_counter = L_min_counter + 1;
 		}
 		else if ( geometry.voronoi_cell_list[k].ellipse.type == 20 )
 		{
-		    sum_force3_x = params.stretching_force -
+		    sum_force3_x = F -
 			2.0*params.eta*(geometry.voronoi_cell_list[k].ellipse.c1 - L_max_old);
 		    L_max = L_max + geometry.voronoi_cell_list[k].ellipse.c1;
 		    L_max_counter = L_max_counter + 1;
@@ -472,7 +500,7 @@ public:
 		
 		if ( geometry.voronoi_cell_list[k].ellipse.type == 1 )
 		{
-		    double d_phi = 10.0*torque*params.dt;// + 0.1*rnorm(gen);
+		    double d_phi = 1.0*torque*params.dt;// + 0.1*rnorm(gen);
 		    //double d_phi = 0.0;
 		    double v1, v2;
 		    double u1, u2;

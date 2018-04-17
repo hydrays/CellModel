@@ -18,6 +18,7 @@ public:
     double dt;
     double eta;    
     int two_population_model;
+    int feedback;
     double q0;
     double a, b;
     double a_braf, b_braf;
@@ -28,7 +29,8 @@ public:
     int flag_output_cell;
     int flag_output_force;
     int flag_record_final_state;    
-	
+    double alpha = 20.0;
+    
 public:
     bool init()
     {
@@ -65,6 +67,9 @@ public:
 	    two_population_model = pTree.get<int>("main.two_population_model");
 	    std::cout << "two_population_model: " << two_population_model << std::endl;
 
+	    feedback = pTree.get<int>("main.feedback");
+	    std::cout << "feedback: " << feedback << std::endl;
+	    
 	    q0 = pTree.get<double>("main.q0");
 	    std::cout << "q0: " << q0 << std::endl;
 
