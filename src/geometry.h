@@ -11,6 +11,7 @@
 #include <unordered_set>
 #include <iomanip>
 #include <map>
+#include <random>
 #include "ellipse.h"
 #include "parameters.h"
 

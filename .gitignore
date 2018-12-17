@@ -7,7 +7,6 @@
 *.grd
 *.gri
 case*
-.*
 path/**
 path*
 *CMakeFiles*

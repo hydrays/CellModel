@@ -5,31 +5,34 @@ cmd1 <- paste("cp config.xml config.old")
 system(cmd1)
 
 ##output_file_prefix <- format(Sys.time(), "%Y%m%d%H%M")
-output_file_prefix <- "braf8"
+output_file_prefix <- "testrun_2model"
 output_path = "out"
-rep = 10
+rep = 0
 
 output_dir = "out"
 cell_position_file = "cellPos.txt"
-Nstep = 2000
+Nstep = 600
 dt = 0.01
 eta = 20
-q0 = 1.53
-a = 1.2
-b = 0.8
+two_population_model = 1
+q0= 1.2
+a = 1.0
+b = 1.0
 a_braf = 0.5
 b_braf = 0.5
-braf_mosaic_percentage = 0.4
-mu = 0.05
+braf_mosaic_percentage = 0.0
+mu = 0.01
 stretching_force = 2.0
 H_rate = 0.004
-flag_output_cell = 1
+flag_output_cell = 0
 flag_output_force = 0
 flag_record_final_state = 0
 
-##for ( stretching_force in seq(5.5, 15, by=0.5) )
-for ( i in seq(10) )
+for ( stretching_force in seq(1, 16, by=1) )
+##for ( stretching_force in c(seq(15, 15, length.out=10), seq(10, 10, length.out=10) ))
+##for ( i in seq(10) )
 {
+    ##stretching_force = 4
     rep = rep + 1
     cat("\n ***********run********* ", rep, "\n")
     FolderName <- paste("case_", output_file_prefix, "_", as.character(rep), sep='')
@@ -43,6 +46,7 @@ for ( i in seq(10) )
     xmlValue(r[["Nstep"]]) <- Nstep
     xmlValue(r[["dt"]]) <- dt
     xmlValue(r[["eta"]]) <- eta
+    xmlValue(r[["two_population_model"]]) <- two_population_model
     xmlValue(r[["q0"]]) <- q0
     xmlValue(r[["a"]]) <- a
     xmlValue(r[["b"]]) <- b
@@ -69,11 +73,15 @@ for ( i in seq(10) )
 
     ##rtime <- runif(1, 20, 200)
     ##runcmd <- paste("sleep ", rtime, "; cd", FolderName, "; screen PhysModel; cd ..")
+
+    ## screen, on PC
     runcmd <- paste("cd", FolderName, "; screen -d -m PhysModel; cd ..")
-    ##cat(paste("sleep ", rtime, "; cd", FolderName, "; PhysModel; cd .."), file="run")
-    ##runcmd <- paste("screen -d -m ", FolderName, "/PhysModel", sep='')
-    ##runcmd <- paste("bsub ", FolderName, "/run -o output_", i, sep='')	
-    ##runcmd <- paste("cd", FolderName, "; pwd; BigCAT; cd ..;")
+    ## runcmd <- paste("screen -d -m ", FolderName, "/PhysModel", sep='')
+
+    ## ## bsub, on server
+    ## runcmd <- paste("bsub ", FolderName, "/PhysModel -o output_", rep, sep='')	
+    ## runcmd <- paste("cd ", FolderName, "; bsub PhysModel -o output_", rep, "; cd ..", sep='')	
+
     writeLines(runcmd, Cfile)
 
 }

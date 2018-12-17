@@ -421,7 +421,6 @@ figure3 <- function(nthreads, Nsample)
 }
 
 figure3(nthreads=20, Nsample=100)
-
 figure4(5)
 
 ##computeSDpara(2, 2)
