@@ -12,17 +12,11 @@ path*
 *CMakeFiles*
 *.a
 *.orig
-VNrelation/**
-BigCAT
-DataStream
 out
 Makefile
 out/**
 src/Makefile
 src/cmake_install.cmake
-VNrelation
-VNrelation_big/
-VNrelation_small/
 config.xml
 cmake_install.cmake
 commands

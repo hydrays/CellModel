@@ -1,45 +1,10 @@
 require(lattice)
-OP <- function(angles)
-{
-    OP <- mean(cos(2*angles))
-    return(OP)
-}
+output_file_prefix <- "basemodel2_a135"
 
-output_file_prefix <- "testrun_2model"
-
-rep0 = 0
-
-#rep0 = 110
-p0 <- 0.75
-pbraf <- 0.0
-Nsample <- 200
-
-colList <- c("red", "blue", "black", "green", "cyan")
-colList <- rep(colList, 5)
-##par(mfrow=c(2,1))
-
-png(paste("output_", output_file_prefix, ".png", sep=''), height=600, width=1200)
-par(mar=c(5,6,4,4))
-##par(mfrow=c(2,2))
-
-plot(0, 0, type='n', xlim=c(0, 2000),
-     ##ylim=c(-10, 10),
-     ylim=c(-1, 0),
-     xlab="number of divisions", ylab="deviation X(t)",
-     cex.axis=1.5, cex.lab=1.5)
-abline(h=c(0, -5, 5),col='blue')
-
-angle = NULL
-braf = NULL
 A = NULL
-rep = rep0
-n0 = 600
-Fcal <- NULL
-n <- 0
-totalDividingAngleList <- NULL
-OrderParameterList <- NULL
-for ( i in seq(16) )
-##for ( i in 10 )
+rep <- 0
+force <- c(1, 3, 7, 10, 14, 16)
+for ( i in seq(6) )
 {
     rep = rep + 1
     cat("\n ***********run********* ", rep, "\n")
@@ -51,37 +16,31 @@ for ( i in seq(16) )
     {
         FileName <- fileid
         stat <- read.csv(file=FileName, header=FALSE)
-        z <- stat[n0:dim(stat)[1],9] - stat[n0,9]
-        ##z <- z - 0.1*seq(length(z))
-	##lines(stat[,8], type='o', col=colList[i])
-	##lines(stat[,11], col=colList[floor((i-1)/1)+1])
-        ##lines((1-p0)*((stat[,5]-stat[,4])-40) - p0*2.0*(stat[,6]-17), col=colList[floor((i-1)/1)+1])
-        lines(stat[,11], col=colList[floor((i-1)/1)+1])
-        ##lines(stat[,10], col=colList[floor((i-1)/5) + 1])
-        ##lines(cumsum(stat[stat[,3]>=0,9])-0.15*seq_along(stat[stat[,3]>=0,9]), col=colList[floor((i-1)/5) + 1])
-        if ( length(stat[,11]) >= 450 )
+        L <- length(stat[,1])
+        if ( L > 200 )
         {
-            stableStat <- stat[-seq(600),]
-            dividingAngleList <- stableStat[stableStat[,3]>0,12]
-            totalDividingAngleList <- c(totalDividingAngleList, dividingAngleList)
-            OrderParameterList <- rbind(OrderParameterList, c(i, stat[450,11]))
-            cat('order parameter: ', OP(dividingAngleList), '\n')
+            A <- rbind(A, c(force[rep], stat[L,10]))
         }
-        if ( length(stat[,11]) == 600 )
-        {
-            n <- n + 1
-            ##A[rep] <- stat[length(stat[,11]),11]
-            A <- rbind(A, c(rep, stat[560,11]))
-            Fcal[n] <- z[10*Nsample]
-            ##lines(z[1:(10*Nsample)], col="blue")
-            angle = c(angle, stat[10*seq(n0/10, length.out=Nsample),11])
-            ##braf = c(braf, stat[10*seq(20, Nsample),11])
-        }
+        cat(L, " ")
     }
+    cat("\n")
 }
-dev.off()
+plot(A[,1], A[,2])
 
-#hist(atan(abs(sin(totalDividingAngleList)/cos(totalDividingAngleList))))
+## colList <- c("red", "blue", "black", "green", "cyan")
+## colList <- rep(colList, 5)
+## png(paste("output_", output_file_prefix, ".png", sep=''), height=600, width=1200)
+## par(mar=c(5,6,4,4))
+## plot(0, 0, type='n', xlim=c(0, 2000),
+##      ##ylim=c(-10, 10),
+##      ylim=c(-1, 0),
+##      xlab="number of divisions", ylab="deviation X(t)",
+##      cex.axis=1.5, cex.lab=1.5)
+## abline(h=c(0, -5, 5),col='blue')
+## dev.off()
+
+
+## hist(atan(abs(sin(totalDividingAngleList)/cos(totalDividingAngleList))))
 
 ## png('AspectRatio.png', height=600, width=600)
 ## ##par(mfrow=c(1,2))

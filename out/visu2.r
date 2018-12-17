@@ -1,14 +1,14 @@
 require(lattice)
 cellIDset = c(56, 70, 30, 20)
 ##cellIDset = NULL
-edgesOld <- read.csv(file=paste("cell_edges", 100, ".txt", sep=''), header=FALSE)
-ellipsesOld <- read.csv(file=paste("ellipses", 100, ".txt", sep=''), header=FALSE)
+edgesOld <- read.csv(file=paste("cell_edges", 0, ".txt", sep=''), header=FALSE)
+ellipsesOld <- read.csv(file=paste("ellipses", 0, ".txt", sep=''), header=FALSE)
 r0 <- 1.53
 
 ratioAll <- NULL
 
 ##for (file_index in seq(170, 172) )
-for (file_index in seq(0,10100,by=1) )
+for (file_index in seq(0,10100,by=10) )
 {
     cat(file_index, "\n")
     nodes <- read.csv(file=paste("cell_nodes", file_index, ".txt", sep=''), header=FALSE)
@@ -27,22 +27,22 @@ for (file_index in seq(0,10100,by=1) )
     ratio <- ellipses[,8]/ellipses[,9]
     ratioAll <- c(ratioAll, sum(ratio>r0)/length(ratio))
     
-    png(paste("ar", file_index, ".png", sep=''), height=600, width=800)
-    ##pdf(paste("ar", file_index, ".pdf", sep=''), height=7, width=7)
-    par(mar=c(5,6,5,5))
-    ## hist(ellipses[type<10,6]/ellipses[type<10,7], breaks=15, freq=FALSE,
-    ##      xlim=c(1,2.6),
-    ##      xlab="aspect ratio", ylab="frequency", cex.lab=2, cex.axis=1.5,
-    ##      ##main=paste("mean", mean(ratio), "var", var(ratio)))
-    ##      main="")
-    ar <- ellipses[type<10,6]/ellipses[type<10,7]
-    ##ar <- ar + rnorm(length(ar), 0, 0.1)
-    F <- ecdf(ar)
-    plot(F, xlim=c(1,2.6))
-    abline(v=1.53, col='red', lwd=4, lty=2)
-    abline(h=sum(ar<1.53)/length(ar), col='blue', lwd=4, lty=2)
-    ##cat(file="meanar.txt", mean(ellipses[,6]/ellipses[,7]), '\n', append=T)
-    dev.off()
+    ## png(paste("ar", file_index, ".png", sep=''), height=600, width=800)
+    ## ##pdf(paste("ar", file_index, ".pdf", sep=''), height=7, width=7)
+    ## par(mar=c(5,6,5,5))
+    ## ## hist(ellipses[type<10,6]/ellipses[type<10,7], breaks=15, freq=FALSE,
+    ## ##      xlim=c(1,2.6),
+    ## ##      xlab="aspect ratio", ylab="frequency", cex.lab=2, cex.axis=1.5,
+    ## ##      ##main=paste("mean", mean(ratio), "var", var(ratio)))
+    ## ##      main="")
+    ## ar <- ellipses[type<10,6]/ellipses[type<10,7]
+    ## ##ar <- ar + rnorm(length(ar), 0, 0.1)
+    ## F <- ecdf(ar)
+    ## plot(F, xlim=c(1,2.6))
+    ## abline(v=1.53, col='red', lwd=4, lty=2)
+    ## abline(h=sum(ar<1.53)/length(ar), col='blue', lwd=4, lty=2)
+    ## ##cat(file="meanar.txt", mean(ellipses[,6]/ellipses[,7]), '\n', append=T)
+    ## dev.off()
     
     png(paste("plot", file_index, ".png", sep=''),
         height=600, width=1200)

@@ -5,30 +5,31 @@ cmd1 <- paste("cp config.xml config.old")
 system(cmd1)
 
 ##output_file_prefix <- format(Sys.time(), "%Y%m%d%H%M")
-output_file_prefix <- "testrun_2model"
+output_file_prefix <- "basemodel2_a135_showcell2"
 output_path = "out"
 rep = 0
 
 output_dir = "out"
 cell_position_file = "cellPos.txt"
-Nstep = 600
+Nstep = 1600
 dt = 0.01
 eta = 20
 two_population_model = 1
-q0= 1.2
-a = 1.0
+q0= 1.5
+a = 1.35
 b = 1.0
 a_braf = 0.5
 b_braf = 0.5
 braf_mosaic_percentage = 0.0
 mu = 0.01
-stretching_force = 2.0
+stretching_force = 3.0
 H_rate = 0.004
-flag_output_cell = 0
+flag_output_cell = 1
 flag_output_force = 0
 flag_record_final_state = 0
 
-for ( stretching_force in seq(1, 16, by=1) )
+stretching_force_list <- c(1, 3, 7, 10, 14, 16)
+##for ( stretching_force in stretching_force_list )
 ##for ( stretching_force in c(seq(15, 15, length.out=10), seq(10, 10, length.out=10) ))
 ##for ( i in seq(10) )
 {
