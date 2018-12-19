@@ -111,7 +111,7 @@ public:
 
     int cell_division(Geometry &geometry, Force &force, Parameters &params, DivInfo &div_info)
     {
-	// divided cell
+      // divided cell
 	div_info.div_index = -1;
 
 	double u = runif(gen);
@@ -185,6 +185,13 @@ public:
 		s1 = s1 + fabs(cos(dividing_angle));
 		s2 = s2 + fabs(sin(dividing_angle));
 		sig = (1-p0)*s1 - p0*s2;
+
+		// update H
+		delta_H = geometry.boundary_data.H * fabs(sin(dividing_angle))/geometry.cell_number;
+		geometry.boundary_data.set_boundary_data(geometry.boundary_data.L_min,
+							 geometry.boundary_data.L_max,
+							 geometry.boundary_data.H + delta_H);
+			
 	    }
 	    else
 	    {
@@ -284,7 +291,6 @@ public:
 	double L_max_old = geometry.boundary_data.L_max;
 	double L_min = 0.0;
 	double L_max = 0.0;
-	double delta_H = 0.0;
 	int L_min_counter = 0;
 	int L_max_counter = 0;
 	double external_force_y = 0.0;
@@ -517,13 +523,14 @@ public:
 	}
 	L_min = L_min/L_min_counter;
 	L_max = L_max/L_max_counter;
-	delta_H = -params.H_rate*external_force_y/(L_max - L_min);
+	//delta_H = -params.H_rate*external_force_y/(L_max - L_min);
+	
 	/* std::cout << "test: " << L_min << ", " << L_max << ", " */
 	/* 	  << geometry.boundary_data.H << " external_force: " */
 	/* 	  << external_force_y */
 	/* 	  << " delta_H: " << delta_H << "\n"; */
 	geometry.boundary_data.set_boundary_data(L_min, L_max,
-						 geometry.boundary_data.H + delta_H);
+						 geometry.boundary_data.H);
 
 	// extend the boundary wall if needed
 	if ( boundary_force1_y/(2.0*geometry.boundary_data.H) > 0.1 )

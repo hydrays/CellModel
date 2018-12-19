@@ -8,7 +8,7 @@ r0 <- 1.53
 ratioAll <- NULL
 
 ##for (file_index in seq(170, 172) )
-for (file_index in seq(0,10100,by=10) )
+for (file_index in seq(0,10100,by=1) )
 {
     cat(file_index, "\n")
     nodes <- read.csv(file=paste("cell_nodes", file_index, ".txt", sep=''), header=FALSE)
@@ -43,8 +43,10 @@ for (file_index in seq(0,10100,by=10) )
     ## abline(h=sum(ar<1.53)/length(ar), col='blue', lwd=4, lty=2)
     ## ##cat(file="meanar.txt", mean(ellipses[,6]/ellipses[,7]), '\n', append=T)
     ## dev.off()
+
+    padded_figure_index <- sprintf("%05d", file_index)
     
-    png(paste("plot", file_index, ".png", sep=''),
+    png(paste("plot", padded_figure_index, ".png", sep=''),
         height=600, width=1200)
     par(mfrow=c(1,2))
     ##pdf(paste("plot", file_index, ".pdf", sep=''),
