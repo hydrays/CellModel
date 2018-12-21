@@ -30,6 +30,7 @@ public:
     int flag_output_force;
     int flag_record_final_state;    
     double alpha = 20.0;
+    double k1 = 0.0;
     
 public:
     bool init()
