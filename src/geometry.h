@@ -35,6 +35,7 @@ struct BoundaryData
     double L_min;
     double L_max;
     double H;
+    double L0;
     double margin_L;
     double margin_H;
     double res_x, res_y;
@@ -75,6 +76,7 @@ struct BoundaryData
 		std::cout << "error: not enough marginal region. \n";
 		getchar();
 	    }
+
 	    //std::cout << "Status: boundary data initialized. \n";
 	}
 };
@@ -1379,9 +1381,9 @@ public:
 	return 0;
     }
 
-    int output_ellipse_list(std::string file_index, Parameters &params)
+    int output_ellipse_list(Parameters &params)
     {
-	std::ofstream fellipse(params.output_dir + "/ellipses" + file_index + ".txt");
+	std::ofstream fellipse(params.output_dir + "/ellipses" + std::to_string(100*params.t) + ".txt");
 	if(!fellipse) 
 	{
 	    std::cout << "file open error.\n";
@@ -1428,7 +1430,8 @@ public:
 
     int output_cell_position(Parameters &params)
     {
-	std::ofstream fout(params.output_dir + "/cellPos.txt");
+	//std::ofstream fout(params.output_dir + "/cellPos.txt");
+	std::ofstream fout("cellPos.txt");
 	if(!fout) 
 	{
 	    std::cout << "file open error.\n";
@@ -1437,7 +1440,9 @@ public:
 
 	for ( int k=0; k<voronoi_cell_list.size(); k++)
 	{
-	    if ( voronoi_cell_list[k].cell_id < 8000 )
+	    //if ( voronoi_cell_list[k].cell_id < 8000 )
+	    if ( voronoi_cell_list[k].cell_id < 8000 &&
+		 voronoi_cell_list[k].ellipse.type < 10)
 	    {
 		fout << voronoi_cell_list[k].ellipse.c1 << "," << 
 		    voronoi_cell_list[k].ellipse.c2 << "\n";
@@ -1604,11 +1609,11 @@ public:
 	return 0;
     }
 
-    int output_cell_list(std::string file_index, Parameters &params)
+    int output_cell_list(Parameters &params)
     {
-	std::ofstream fnode(params.output_dir + "/cell_nodes" + file_index + ".txt");
-	std::ofstream fedge(params.output_dir + "/cell_edges" + file_index + ".txt");
-	std::ofstream farea(params.output_dir + "/cell_area" + file_index + ".txt");
+	std::ofstream fnode(params.output_dir + "/cell_nodes" + std::to_string(100*params.t) + ".txt");
+	std::ofstream fedge(params.output_dir + "/cell_edges" + std::to_string(100*params.t) + ".txt");
+	std::ofstream farea(params.output_dir + "/cell_area" + std::to_string(100*params.t) + ".txt");
 	if(!fnode || !fedge || !farea) 
 	{
 	    std::cout << "file open error.\n";

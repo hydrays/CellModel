@@ -28,10 +28,13 @@ public:
     double H_rate;
     int flag_output_cell;
     int flag_output_force;
-    int flag_record_final_state;    
+    int flag_record_final_state;
+    int flag_continue;    
     double alpha = 20.0;
     double k1 = 0.0;
-    
+    double t;
+    double nu;
+
 public:
     bool init()
     {
@@ -106,6 +109,12 @@ public:
 	    
 	    flag_record_final_state = pTree.get<int>("main.flag_record_final_state");
 	    std::cout << "flag_record_final_state: " << flag_record_final_state << std::endl;
+
+	    flag_continue = pTree.get<int>("main.flag_continue");
+	    std::cout << "flag_continue: " << flag_continue << std::endl;
+
+	    nu = pTree.get<double>("main.nu");
+	    std::cout << "nu: " << nu << std::endl;
 	    
 	    std::cout << "Done parameter initialize: Success!" << std::endl;	    
 	}

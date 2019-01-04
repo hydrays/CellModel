@@ -86,27 +86,27 @@ public:
     	    return 0;
     	}
 
-    int output_force_filed(Geometry &geometry, std::string file_index, Parameters &params)
+    int output_force_filed(Geometry &geometry, Parameters &params)
 	{
-	    std::ofstream foutput(params.output_dir + "/force" + file_index + ".txt");
+	    std::ofstream foutput(params.output_dir + "/force" + std::to_string(params.t) + ".txt");
 	    if(!foutput) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput2(params.output_dir + "/force2" + file_index + ".txt");
+	    std::ofstream foutput2(params.output_dir + "/force2" + std::to_string(params.t) + ".txt");
 	    if(!foutput2) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput_sum(params.output_dir + "/sum_force" + file_index + ".txt");
+	    std::ofstream foutput_sum(params.output_dir + "/sum_force" + std::to_string(params.t) + ".txt");
 	    if(!foutput_sum) 
 	    {
 		std::cout << "file open error.\n";
 		return -1; 
 	    }
-	    std::ofstream foutput_torque(params.output_dir + "/torque" + file_index + ".txt");
+	    std::ofstream foutput_torque(params.output_dir + "/torque" + std::to_string(params.t) + ".txt");
 	    if(!foutput_torque) 
 	    {
 		std::cout << "file open error.\n";
@@ -180,9 +180,9 @@ public:
 	    return 0;
 	}
 
-    int output_cell_force_status(Geometry &geometry, Parameters &params, std::string file_index)
+    int output_cell_force_status(Geometry &geometry, Parameters &params)
 	{
-	    std::ofstream foutput("out/cell_force_status" + file_index + ".txt");
+	    std::ofstream foutput("out/cell_force_status" + std::to_string(params.t) + ".txt");
 	    if(!foutput) 
 	    {
 		std::cout << "file open error.\n";
